@@ -1,5 +1,5 @@
 body {
-  background-color: #FFDD9A;
+  background-color: #bbe1a8;
   margin: 0;
   padding: 0;
 }
@@ -22,17 +22,30 @@ title {
 h1 {
   font-family: "Helvetica";
   font-size: 50px;
+  text-align: center;
+  color:  #44547e;
+
 }
 
 h2 {
   font-family: "Helvetica";
   font-size: 30px;
-
+  text-align: center;
+  color: #44547e;
+  margin-bottom: 6px;
 }
 
 h3 {
   font-family: "Helvetica";
   font-size: 16px;
+  text-align: center;
+}
+
+h4 {
+  font-family: "Helvetica";
+  font-size: 16px;
+  color: #7585c1;
+  margin-bottom: 1px;
 }
 
 ul {
@@ -40,6 +53,7 @@ ul {
   font-family: helvetica;
   font-size: 14px;
   text-align: left;
+  margin-top: 6px;
 }
 
 p {
@@ -50,7 +64,15 @@ p {
 
 img {
   width: 300px;
+  border-radius: 15%;
+  max-width: 100%;
+  height: auto;
+}
 
+hr {
+  width: 90%;
+  height: 4px;
+  background: #44547e;
 }
 
 
