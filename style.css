@@ -21,7 +21,7 @@ title {
 
 h1 {
   font-family: "Helvetica";
-  font-size: 50px;
+  font-size: 60px;
   text-align: center;
   color:  #44547e;
 
@@ -29,7 +29,7 @@ h1 {
 
 h2 {
   font-family: "Helvetica";
-  font-size: 30px;
+  font-size: 35px;
   text-align: center;
   color: #44547e;
   margin-bottom: 6px;
@@ -37,34 +37,36 @@ h2 {
 
 h3 {
   font-family: "Helvetica";
-  font-size: 16px;
+  font-size: 23px;
   text-align: center;
 }
 
 h4 {
   font-family: "Helvetica";
-  font-size: 16px;
+  font-size: 23px;
   color: #7585c1;
+  margin-top: 10px;
   margin-bottom: 1px;
 }
 
 ul {
   list-style-type: circle;
   font-family: helvetica;
-  font-size: 14px;
+  font-size: 17px;
   text-align: left;
   margin-top: 6px;
+  line-height: 22px;
 }
 
 p {
   font-family: helvetica;
-  font-size: 14px;
+  font-size: 17px;
   text-align: left;
 }
 
 img {
   width: 300px;
-  border-radius: 15%;
+  border-radius: 5%;
   max-width: 100%;
   height: auto;
 }
@@ -75,5 +77,34 @@ hr {
   background: #44547e;
 }
 
+.menu {
+  overflow: hidden;
+  background-color: #f2f2f1;
+  padding: 15px 7px;
+  width: 98%;
+  text-align: center;
+}
+
+.menu a {
+  font-family: helvetica;
+  float: left;
+  color: #44547e;
+  font-weight: bold;
+  padding: 8px;
+  text-decoration: none;
+  line-height: 15px;
+  border-radius: 4px;
+}
+
+.menu a.active {
+  background-color: #7585c1;
+  color: white;
+}
+
+.header-right {
+  font-size: 18px;
+  float: none;
+  display: inline-block;
+}
 
 
