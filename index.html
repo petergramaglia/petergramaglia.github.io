@@ -3,32 +3,43 @@
 
 <head>
   <meta charset="utf-8">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="bootstrap.css">
   <title class = "title">Peter Gramaglia</title>
   <link rel="icon" href="robot.png">
 </head>
 
 <body>
-  <div id="pagewrap">
-    <h1 class="header">Peter Gramaglia</h1>
+  <div class="container">
 
-    <div class="menu">
-        <div class="header-right">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <a class="navbar-brand" href="#">Peter Gramaglia</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
-
-          <a class="active" href="http://petergramaglia.github.io/index.html">Home</a>
-          <a href="http://petergramaglia.github.io/bio.html">Bio</a>
-          <a href="http://petergramaglia.github.io/resume.html">Resume</a>
-        </div>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item active">
+            <a class="nav-link" href="#">Home </a>
+          </li>          
+          <li class="nav-item">
+            <a class="nav-link" href="https://petergramaglia.github.io/resume.html">Resume</a>
+          </li>
+        </ul>
+        
       </div>
+    </nav>
 
+      <div class="container">
+
+
+        <h3>Hi! I'm Peter.</h3>
+        <p>I am rising senior studying Computer Science at the Tufts University School of Engineering. I'm interested in software engineering and product management. I grew up in the Boston area, and I currently live in Somerville, Massachusetts. In my free time I like to hike mountains, climb rocks, and swim in the ocean. </p>
+        <h3><img src="iceland.png" alt="Me on a mountain" height="142"></h3>
+
+      </div>
+  </div>
         
-        <hr />
-        <h3>I'm Peter, and this is my personal website.</h3> 
-        <h3><img src="me.png" alt="Me on a mountain"></h3>
-        <p>Here is a picture of me in the wilderness!</p>
-        
-    </div>  
 </body>
 
 </html>
