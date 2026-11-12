@@ -16,7 +16,7 @@ test('all derivative assets and legacy resume remain available', async () => {
   for (const variant of ['desktop', 'mobile']) {
     assert.ok(manifest[variant].width > 0 && manifest[variant].height > 0);
     assert.equal(manifest[variant].focal.length, 2);
-    for (const filename of ['photo.webp', 'drawing.webp', 'control.png']) await access(new URL(`assets/${variant}/${filename}`, root));
+    for (const filename of ['finished.webp', 'layer0.webp', 'time0.png', 'layer1.webp', 'time1.png', 'layer2.webp', 'time2.png']) await access(new URL(`assets/${variant}/${filename}`, root));
   }
   await access(new URL('resume.html', root));
   await access(new URL('Gramaglia_Resume.pdf', root));

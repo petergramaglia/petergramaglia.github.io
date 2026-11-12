@@ -17,11 +17,11 @@ function compile(gl, type, source) {
 }
 
 async function loadImages(variant, signal) {
-  const files = ['photo.webp', 'drawing.webp', 'control.png'];
+  const files = ['layer0.webp', 'time0.png', 'layer1.webp', 'time1.png', 'layer2.webp', 'time2.png'];
   const results = await Promise.allSettled(files.map(async (file) => {
     const response = await fetch(new URL(`${variant}/${file}`, assetRoot), { signal });
     if (!response.ok) throw new Error(`Landscape image unavailable (${response.status})`);
-    const bitmap = await createImageBitmap(await response.blob(), { premultiplyAlpha: 'none' });
+    const bitmap = await createImageBitmap(await response.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
     if (signal.aborted) { bitmap.close(); throw new DOMException('Aborted', 'AbortError'); }
     return bitmap;
   }));
@@ -59,8 +59,9 @@ export class LandscapeRenderer {
       const position = gl.getAttribLocation(this.program, 'aPosition');
       gl.enableVertexAttribArray(position);
       gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-      this.uniforms = Object.fromEntries(['Photo', 'Drawing', 'Control', 'Scale', 'Offset', 'Resolve', 'Velocity'].map((key) => [key, gl.getUniformLocation(this.program, `u${key}`)]));
-      ['Photo', 'Drawing', 'Control'].forEach((key, i) => gl.uniform1i(this.uniforms[key], i));
+      this.uniforms = Object.fromEntries(['Ink0', 'Time0', 'Ink1', 'Time1', 'Ink2', 'Time2', 'Scale', 'Offset', 'Resolve'].map((key) => [key, gl.getUniformLocation(this.program, `u${key}`)]));
+      ['Ink0', 'Time0', 'Ink1', 'Time1', 'Ink2', 'Time2'].forEach((key, i) => gl.uniform1i(this.uniforms[key], i));
+      if (gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) < 6) throw new Error('Insufficient landscape texture units');
       this.maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE);
       const viewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
       this.maxAxis = Math.min(gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), ...viewport);
@@ -81,7 +82,7 @@ export class LandscapeRenderer {
       ownsImages = !cached;
       if (this.disposed || generation !== this.generation) return false;
       const gl = this.gl;
-      for (const image of images) {
+      for (const [index, image] of images.entries()) {
         if (image.width > this.maxTexture || image.height > this.maxTexture) throw new Error('Landscape exceeds texture limit');
         const texture = gl.createTexture();
         if (!texture) throw new Error('Landscape texture allocation failed');
@@ -92,14 +93,16 @@ export class LandscapeRenderer {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+        const format = index % 2 ? gl.LUMINANCE : gl.RGBA;
+        gl.texImage2D(gl.TEXTURE_2D, 0, format, format, gl.UNSIGNED_BYTE, image);
         if (gl.getError() !== gl.NO_ERROR) throw new Error('Landscape texture upload failed');
       }
-      // Decode the HTML endpoint before changing either visible layer.
+      // Decode the finished drawing fallback before changing either visible layer.
       const photo = cached?.photo || new Image();
       photo.className = 'managed-photo'; photo.id = 'managed-photo';
       photo.alt = ''; photo.setAttribute('aria-hidden', 'true');
-      if (!cached) photo.src = new URL(`${variant}/photo.webp`, assetRoot).href;
+      if (!cached) photo.src = new URL(`${variant}/finished.webp`, assetRoot).href;
       await Promise.race([
         photo.decode(),
         new Promise((_, reject) => {
@@ -141,15 +144,14 @@ export class LandscapeRenderer {
     this.canvas.parentElement.style.setProperty('--position-y', `${this.crop.position[1] * 100}%`);
   }
 
-  draw(resolve, velocity = 0) {
-    if (this.disposed || !this.crop || this.textures.length !== 3) return;
+  draw(resolve) {
+    if (this.disposed || !this.crop || this.textures.length !== 6) return;
     const gl = this.gl;
     gl.useProgram(this.program);
     this.textures.forEach((texture, i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, texture); });
     gl.uniform2fv(this.uniforms.Scale, this.crop.scale);
     gl.uniform2fv(this.uniforms.Offset, this.crop.offset);
     gl.uniform1f(this.uniforms.Resolve, resolve);
-    gl.uniform1f(this.uniforms.Velocity, Math.max(-1, Math.min(1, velocity)));
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 

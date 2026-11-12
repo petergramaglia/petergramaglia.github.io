@@ -1,4 +1,6 @@
-# Resolve review and validation
+# Field study review and validation
+
+The original photo-reveal implementation below is historical. The current stroke-drawing revision is recorded at the end of this document and in `stroke-revision.md`.
 
 ## Plan review
 
@@ -33,3 +35,16 @@ The in-app browser connector was unavailable due to a connection/runtime error. 
 The approved panorama's added edges are AI-generated and disclosed in About. Original user source images remain outside the repository; derivatives and the code-based drawing generator are committed. The line treatment is illustrative, not topography. Resume URLs are preserved, but the homepage does not promote an old student-era resume as current work.
 
 The final photo is deliberately handed to the HTML image at full resolve. A separate navigation gradient remains for legibility. Extremely short windows may crop the summit when keeping both summit and climber is geometrically impossible; the climber takes priority and the tuner moves to the right.
+
+## Current revision: stroke growth into a colored drawing
+
+Peter requested that the slider build an increasingly refined and saturated drawing instead of fading into a photograph. `stroke-revision.md` documents the replacement rendering contract. The source photos now serve only as authoring inputs; every runtime state and fallback is drawn.
+
+- Astra high approach review approved the per-stroke timing design, requiring full endpoint coverage, lossless timing with filtered-edge gutters, visible moving tips, memory bounds, and a matching drawn fallback.
+- Separate Astra high rendering and integration reviewers approved the six-texture renderer, persistent canvas endpoint, cache/disposal behavior, asset metadata/dimensions, and regenerated-manifest synchronization. Their requested lossless atlas encoding and memory-accounting corrections were implemented.
+- Astra high visual review inspected actual browser images at the five main checkpoints and successive forward/reverse positions. It confirmed lengthening/retracting marks, directional hatching, and recognizable blue/gold light. The result reads as a dense colored engraving; sky and figure are intentionally softer.
+- Astra high accessibility review approved updated drawing semantics and screenshot contrast. A small additional bottom-gradient increase gives Contact more contrast over pale paper gaps.
+
+Validation: 8 Node tests and 16 local Chrome browser tests pass. Added assertions cover zero runtime source-photo requests, a visible drawn canvas at the endpoint, and agreement between the GPU composition and the precomposited drawing fallback. Forward/reverse screenshot sequences supplement those checks. All previous interaction and failure-path tests now use the drawing assets. The 14 new published drawing assets are lossless, metadata-free, and aligned at 1440×810 or 900×1200; they total approximately 6.98 MiB across both variants. Only the active variant loads initially.
+
+Safari, Firefox, physical touch hardware, and assistive technology remain untested. GitHub Actions validation is reported by the PR checks for the corresponding commit.

@@ -11,10 +11,10 @@
 </head>
 <body>
   <main id="field" class="field" aria-label="Interactive mountain landscape" aria-describedby="landscape-description">
-    <p id="landscape-description" class="sr-only">A climber crossing a rocky alpine slope beneath a mountain ridge in warm light. The landscape can be explored as a drawing or a photograph.</p>
+    <p id="landscape-description" class="sr-only">A climber crossing a rocky alpine slope beneath a mountain ridge in warm light. Drag the slider to build a colored drawing, from a rough sketch to layered lines of color.</p>
     <picture id="initial-photo" class="initial-photo">
-      <source media="(orientation: portrait)" srcset="assets/mobile/photo.webp">
-      <img src="assets/desktop/photo.webp" alt="A climber crossing a rocky alpine slope beneath a mountain ridge in warm light." fetchpriority="high">
+      <source media="(orientation: portrait)" srcset="assets/mobile/finished.webp">
+      <img src="assets/desktop/finished.webp" alt="A colored line drawing of a climber crossing a rocky alpine slope beneath a mountain ridge in warm light." fetchpriority="high">
     </picture>
     <img id="managed-photo" class="managed-photo" alt="" aria-hidden="true">
     <canvas id="landscape" aria-hidden="true"></canvas>
@@ -24,14 +24,14 @@
       <a class="about-link quiet-link" href="#about">About <span aria-hidden="true">↗</span></a>
     </header>
     <div id="tuner" class="tuner" hidden>
-      <div class="tuner-meta" aria-hidden="true"><span>Field study / 001</span><span id="resolve-number">012</span></div>
-      <label class="sr-only" for="resolve">Resolve landscape</label>
+      <div class="tuner-meta" aria-hidden="true"><span>Field study / 001</span><span id="resolve-number">003</span></div>
+      <label class="sr-only" for="resolve">Draw landscape</label>
       <div class="scale">
         <div class="ticks" aria-hidden="true"></div>
         <div class="indicator" aria-hidden="true"></div>
-        <input id="resolve" type="range" min="0" max="1000" value="120" aria-valuetext="12 percent resolved" aria-describedby="gesture-hint">
+        <input id="resolve" type="range" min="0" max="1000" value="30" aria-valuetext="3 percent drawn" aria-describedby="gesture-hint">
       </div>
-      <p id="gesture-hint">Drag to resolve <span aria-hidden="true">↔</span></p>
+      <p id="gesture-hint">Drag to draw <span aria-hidden="true">↔</span></p>
     </div>
     <footer class="field-footer">
       <span class="edition">A study in attention</span>
@@ -43,7 +43,7 @@
     <h2 id="about-title">Peter Gramaglia.</h2>
     <p class="about-intro">Software, artificial intelligence,<br>and time in the mountains.</p>
     <p>I've worked on making PDFs more accessible to screen readers and on ideas and algorithms for an early-stage natural language processing startup.</p>
-    <p>This is a small experiment in looking more closely. Move between a drawing and a photograph; stop wherever you like.</p>
+    <p>This is a small experiment in looking more closely. Build the landscape one line at a time. Move from a loose sketch to layers of color; stop wherever you like.</p>
     <div class="about-links"><a href="https://github.com/petergramaglia">GitHub ↗</a><a href="https://www.linkedin.com/in/peter-gramaglia-35bb97169/">LinkedIn ↗</a></div>
     <p class="image-note">An original mountain photograph, with AI-expanded edges for the desktop composition. The drawing is an artistic interpretation, not an elevation map.</p>
   </section>

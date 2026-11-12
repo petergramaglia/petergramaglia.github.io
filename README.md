@@ -1,6 +1,6 @@
 # Peter Gramaglia — Resolve
 
-An interactive field study: drag the landscape or use the tuning scale to move from an engraved drawing to a photograph. The homepage is a buildless static site hosted on GitHub Pages. Existing résumé URLs are retained.
+An interactive field study: drag the landscape or use the tuning scale to draw it, from a loose sketch to a refined colored engraving. The homepage is a buildless static site hosted on GitHub Pages. Existing résumé URLs are retained.
 
 ## Preview
 
@@ -33,30 +33,30 @@ Tests cover real WebGL initialization, keyboard and pointer input, cancellation,
 
 ## Design and implementation
 
-The detailed [implementation plan](docs/resolve-plan.md) includes the initial brief and revisions from three independent GPT-6 Astra plan reviewers. [Review notes](docs/review-notes.md) record code review findings and validation.
+The [stroke revision](docs/stroke-revision.md) describes the current drawing behavior. The [initial implementation plan](docs/resolve-plan.md) records the earlier photo-reveal direction and its three independent GPT-6 Astra plan reviews. [Review notes](docs/review-notes.md) record code review findings and validation.
 
-- `index.html`, `styles/site.css`: real HTML controls, biography, progressive photo fallback.
+- `index.html`, `styles/site.css`: real HTML controls, biography, progressive finished-drawing fallback.
 - `src/renderer.js`, `src/shaders.js`: WebGL compositing, transactional texture changes, bounded resource allocation and cleanup.
-- `src/composition.js`: shared canvas/photo cover crop, prioritizing the climber on extreme aspect ratios.
+- `src/composition.js`: shared canvas/fallback cover crop, prioritizing the climber on extreme aspect ratios.
 - `src/interaction.js`, `src/main.js`: direct manipulation, frame-independent damping, lifecycle, reduced motion.
 - `src/about.js`: progressive native modal; biography remains ordinary HTML without JavaScript.
-- `assets/`: precomputed aligned photo/drawing/control textures, manifest, and favicon.
+- `assets/`: three timed stroke layers per composition, finished-drawing fallbacks, source photographs, manifest, and favicon.
 
-There are two aspect-specific image sets. The desktop composition uses Peter's approved AI-expanded panorama, with the left ridge corrected against a second reference photograph. Mobile uses the original portrait photograph. Generated edges are disclosed in About. Contour-like marks are an artistic drawing, not elevation data. No coordinates, EXIF, or camera/location metadata are retained in the published derivatives.
+There are two aspect-specific drawing sets. The desktop composition uses Peter's approved AI-expanded panorama, with the left ridge corrected against a second reference photograph. The mobile drawing is based on the original portrait photograph. Generated edges are disclosed in About. Contour-like marks are an artistic drawing, not elevation data. No coordinates, EXIF, or camera/location metadata are retained in the published derivatives.
 
-At full resolve, the exact optimized photo derivative is displayed as an HTML image. At other settings a shader combines the ink drawing, regional tone/shading, and photographic color. Navigation legibility shading is separate from both layers. On graphics failure the current complete photograph remains usable. No continuous animation runs after the control settles; reduced motion disables easing and displacement.
+At every slider position, the artwork consists of drawn strokes on ivory. Each stroke has a per-pixel arrival time that increases along its path; dragging extends the marks and gradually enriches their color. At full progress the canvas remains a colored drawing. No source photograph is loaded at runtime. The static fallback is the finished drawing, composited from the same delivered stroke plates. Navigation legibility shading is separate. No continuous animation runs after the control settles; reduced motion removes easing while preserving direct control.
 
 ### Regenerating assets
 
-Generated files are checked in; this is optional authoring work, not a deployment step. Source photographs remain outside the repository.
+Generated files are checked in; this is optional authoring work, not a deployment step. Original full-resolution source files remain outside the repository.
 
 ```sh
 python3 -m venv /tmp/resolve-assets-env
 /tmp/resolve-assets-env/bin/pip install Pillow numpy scipy
-/tmp/resolve-assets-env/bin/python scripts/prepare-assets.py --help
+/tmp/resolve-assets-env/bin/python scripts/prepare-strokes.py
 ```
 
-Pass `--desktop` and `--mobile` with source-image paths as described by `--help`. The pipeline bakes orientation, normalizes color to sRGB, strips metadata, authors ridge/contour strokes, and produces small aligned control maps. Inspect output and checkpoint previews whenever changing image inputs or drawing parameters; these anchors are specific to this landscape.
+The stroke generator samples the checked-in `assets/{desktop,mobile}/photo.webp` authoring inputs, writes lossless RGBA ink plates and PNG timing maps, and produces `/tmp/resolve-strokes-preview.jpg` for art review. `prepare-assets.py` retains the original source-normalization helpers and ridge geometry used by the stroke generator; it belongs to the first iteration and is not a deployment step. Inspect stroke growth and all checkpoints whenever changing inputs or parameters; the geometry is specific to this landscape.
 
 ## Limits
 

@@ -13,7 +13,7 @@ const hint = document.querySelector('#gesture-hint');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const lifecycle = new AbortController();
 let renderer, input, observer, manifest, requestedVariant;
-let target = .12, current = .12, raf = 0, lastTime = 0, paused = false, failed = false;
+let target = .03, current = .03, raf = 0, lastTime = 0, paused = false, failed = false;
 
 function pause(value) {
   paused = value || document.hidden;
@@ -25,14 +25,14 @@ const about = setupAbout((open) => pause(open));
 function syncUI() {
   field.style.setProperty('--resolve', target);
   range.value = Math.round(target * 1000);
-  range.setAttribute('aria-valuetext', `${Math.round(target * 100)} percent resolved`);
+  range.setAttribute('aria-valuetext', `${Math.round(target * 100)} percent drawn`);
   number.textContent = String(Math.round(target * 100)).padStart(3, '0');
   field.classList.toggle('is-drawing', current < .65);
 }
-function paint(velocity = 0) {
+function paint() {
   if (failed) return;
-  renderer?.draw(current, reduced.matches ? 0 : velocity);
-  field.classList.toggle('is-photo', current === 1);
+  renderer?.draw(current);
+  field.classList.toggle('is-complete', current === 1);
   syncUI();
 }
 function frame(time) {
@@ -40,12 +40,11 @@ function frame(time) {
   if (paused || failed || !renderer?.meta) return;
   const dt = lastTime ? Math.min((time - lastTime) / 1000, .05) : 1 / 60;
   lastTime = time;
-  const before = current;
   current = reduced.matches ? target : follow(current, target, dt);
   if (Math.abs(current - target) < .0001) current = target;
-  paint((current - before) / dt);
+  paint();
   if (current !== target) raf = requestAnimationFrame(frame);
-  else { lastTime = 0; renderer.draw(current, 0); }
+  else { lastTime = 0; renderer.draw(current); }
 }
 function schedule() {
   if (!raf && !paused && !failed && renderer?.meta) raf = requestAnimationFrame(frame);
@@ -53,11 +52,11 @@ function schedule() {
 function fail(error) {
   if (failed) return;
   failed = true;
-  console.warn('Interactive landscape unavailable; using photograph.', error?.message || '');
+  console.warn('Interactive landscape unavailable; using finished drawing.', error?.message || '');
   cancelAnimationFrame(raf); raf = 0;
   input?.dispose(); observer?.disconnect(); renderer?.dispose();
   tuner.hidden = true;
-  field.classList.remove('is-ready', 'is-drawing', 'is-photo');
+  field.classList.remove('is-ready', 'is-drawing', 'is-complete');
   field.dataset.renderer = 'fallback';
 }
 function resize() {
@@ -93,7 +92,7 @@ async function start() {
     renderer = new LandscapeRenderer(canvas, fail);
     input = setupInteraction(canvas, range, () => target, (value) => {
       target = clamp(value);
-      hint.textContent = 'Drawing ↔ Photograph';
+      hint.textContent = 'Sketch ↔ Color';
       syncUI();
       if (reduced.matches) { current = target; paint(); } else schedule();
     });

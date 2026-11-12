@@ -1,7 +1,7 @@
 {
   "desktop": {
-    "width": 1672,
-    "height": 941,
+    "width": 1440,
+    "height": 810,
     "focal": [
       0.5,
       0.64
@@ -22,8 +22,6 @@
       0.582,
       0.535
     ],
-    "controlWidth": 836,
-    "controlHeight": 470,
     "skyline": [
       [
         0,
@@ -430,8 +428,8 @@
     ]
   },
   "mobile": {
-    "width": 1200,
-    "height": 1600,
+    "width": 900,
+    "height": 1200,
     "focal": [
       0.5,
       0.58
@@ -452,8 +450,6 @@
       0.549,
       0.502
     ],
-    "controlWidth": 600,
-    "controlHeight": 800,
     "skyline": [
       [
         0,

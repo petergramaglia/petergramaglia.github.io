@@ -1,0 +1,27 @@
+# Revision: a landscape drawn in color
+
+The first implementation blended an engraved image into a photograph. Peter requested a different interaction: start loosely sketched, draw lines progressively while dragging, and end in a refined, saturated drawing. This supersedes the photo-endpoint sections of the original plan.
+
+## Rendering contract
+
+The browser never samples the source photograph. Three transparent stroke plates describe the scene: initial sketch, broad colored linework, and finer rock/cloud/figure marks. Each plate has a lossless grayscale timing map. Its value at each covered pixel is the point in the slider's journey at which the pen reaches that pixel. Timing increases along each stroke's path, with staggered starts, so individual tips travel as the slider moves.
+
+The shader maps byte timing to `-0.1…1`, reveals a small feathered edge around each arrival time, and composites visible marks over ivory. Early marks exist before zero so the initial view is a loose sketch. Color saturation rises as drawing progresses. At full progress every mark is visible and fully colored. The canvas remains the artwork at the endpoint; no photo fade or HTML-photo handoff occurs.
+
+At stroke overlaps the visible layer records the topmost stroke's timing; lower plates supply underlying marks. This is an intentionally layered drawing rather than a complete reconstruction of physical pen history. Forward motion and reversal are deterministic.
+
+## Asset authoring
+
+`prepare-strokes.py` uses the approved source images and authored ridge geometry to generate paths and sample their colors. Sky strokes are gently curved, staggered, and long enough to see their tips travel. Mountains follow ridge/contour directions; short colored strokes describe rock facets and the climber. Paper gaps remain visible at full progress. The subject may lose photographic detail by design.
+
+The desktop stroke plates are 1440×810 and the portrait plates 900×1200. RGB and timing are extended into a small transparent gutter to avoid dark or premature edges during texture filtering. Timing maps are PNG data without gamma/profile conversion; colored plates are lossless RGBA WebP. `finished.webp` is an opaque, lossless composite of the decoded plates and supplies the no-JS/loading/error fallback.
+
+Six samplers fit WebGL1's guaranteed minimum of eight fragment texture units. Timing maps use LUMINANCE textures, keeping GPU allocations smaller than six full RGBA textures. The two cached decoded atlas sets have a conservative RGBA-equivalent footprint of about 54 MB, plus about 9 MB for both decoded finished drawings; the active GPU set is about 17 MB, temporarily about 34 MB while swapping (drivers may expand internal formats). The drawing buffer retains the 2.5-million-pixel cap. Source photographs remain authoring inputs, not runtime requests.
+
+## Interaction and verification
+
+Keep direct drag, native keyboard range, reduced-motion behavior, bounded frame loop, modal focus, safe cropping, transactional swaps, and fallback handling. Rename the visible interaction to “Drag to draw” and “Sketch ↔ Color”; accessible value is percent drawn.
+
+Validate the actual shader in a real browser at 0, 25, 50, 75, and 100 percent. Also inspect successive small increments and reversal to verify traveling strokes rather than a dissolve. Assert that canvas remains visible at full progress, no source-photo requests occur, and the GPU endpoint agrees with the finished static drawing within sampling tolerance. Re-run orientation, network-failure, context-loss, keyboard, focus, reduced-motion, and gesture tests.
+
+An Astra high approach review approved this architecture with explicit requirements for full endpoint coverage, lossless/dilated timing, visible moving tips, bounded memory, and matching drawn fallbacks. Separate code/art reviews follow implementation.
