@@ -1,6 +1,6 @@
 # Peter Gramaglia — Resolve
 
-An interactive field study: drag the landscape or use the tuning scale to draw it, from a loose sketch to a refined colored engraving. The homepage is a buildless static site hosted on GitHub Pages. Existing résumé URLs are retained.
+An interactive field study: drag the landscape or use the tuning scale to draw it, from a loose sketch to a painting built from tapered colored brushstrokes. The homepage is a buildless static site hosted on GitHub Pages. Existing résumé URLs are retained.
 
 ## Preview
 

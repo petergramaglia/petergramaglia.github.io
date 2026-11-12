@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Author deterministic colored engraving atlases and lengthwise reveal maps.
+"""Author deterministic colored brushstroke atlases and lengthwise reveal maps.
 
 Every visible pixel is coverage from a drawn path, never a photograph overlay.
 Photographs guide selected contour paths and the brush palette. timeN.png is an
@@ -12,7 +12,6 @@ import json
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy.ndimage import gaussian_filter, sobel, distance_transform_edt, map_coordinates
-from scipy.interpolate import PchipInterpolator
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('geometry',ROOT/'scripts/prepare-assets.py')
@@ -79,12 +78,12 @@ class Plate:
 def make(name):
     g=geo.GEOMETRY[name]
     size=(1440,810) if name=='desktop' else (900,1200)
-    w,h=size; rng=np.random.default_rng(7426)
+    w,h=size
     photo=Image.open(ROOT/f'assets/{name}/photo.webp').convert('RGB').resize(size,Image.Resampling.LANCZOS)
     source=np.asarray(photo,dtype=float)
     source=gaussian_filter(source,(2.2,2.2,0))
     lum=source@np.array([.2126,.7152,.0722])
-    # A slightly richer limited-value pencil palette makes light and shade read
+    # A slightly richer limited-value brush palette makes light and shade read
     # as colored marks while avoiding the dense black of an unmodified photo.
     source=np.clip(lum[:,:,None]+(source-lum[:,:,None])*1.2,0,255)
     source=np.clip(source*.96+PAPER*.04,0,255)
@@ -213,75 +212,113 @@ def make(name):
     for i,line in enumerate(person_details[name]):
         plates[0].path(subdivide(points(line)),.8,INK,.38+i*.019,.07,.66)
     print(name,'structural paths',counts,flush=True)
-    # Sky is a field of long horizontal colored pencil strokes, clipped to the
-    # real skyline. Cloud and sunset color is sampled along each moving stroke.
-    sky_rows=np.cumsum(rng.uniform(4.1,4.6,int(h*.68/4.1)+10))-18
-    for y in sky_rows:
-        x=-rng.uniform(0,120)
-        while x<w:
-            length=rng.uniform(320,900); xx=np.linspace(max(-2,x),min(w+2,x+length),max(2,int(length/5)))
-            yy=y+np.sin(xx/w*2.8+y/h*1.4)*13
-            valid=yy<skyline[np.clip(xx.astype(int),0,w-1)]-1
-            p=np.column_stack((xx[valid],yy[valid]))
-            if len(p)>1:
-                start=.12+.20*(y/h)+rng.uniform(0,.13)
-                plates[1].path(p,rng.uniform(3.8,4.2),sample(p),start,rng.uniform(.11,.18),.98)
-            x+=length+rng.uniform(.1,.7)
-    # Underlying terrain ribbons interpolate the authored ridge contours.
-    # Each ribbon is broken into long independent pencil gestures.
-    for band,(upper,lower) in enumerate(zip(bounds,bounds[1:])):
-        height=np.median(np.maximum(lower-upper,0));n=max(4,int(height/3.6))
-        for j in range(n+1):
-            t=(j+.2)/(n+1);line=upper*(1-t)+lower*t
-            line+=np.sin(xs*31+j*.7)*.65*np.sin(t*np.pi)
-            x=-rng.uniform(0,100)
-            while x<w:
-                length=rng.uniform(65,165) if band<3 else rng.uniform(28,85)
-                idx=np.arange(max(0,int(x)),min(w,int(x+length)),3)
-                valid=(lower[idx]-upper[idx]>0)&(line[idx]<h)&(line[idx]>0)
-                idx=idx[valid];p=np.column_stack((idx,line[idx]))
-                if len(p)>1:
-                    col=sample(p)
-                    col=col*.35+np.mean(col,axis=0)*.65
-                    plates[1].path(p,2.8 if band<3 else 3.1,col,.17+band*.025+rng.uniform(0,.17),rng.uniform(.10,.16),1)
-                x+=length+rng.uniform(1.5,4)
-    # Fine strokes trace local tonal orientation. Long mountainside marks use
-    # image structure; foreground strokes shorten naturally into rock facets.
+    # Keep the approved distant-land orientation field independent of the
+    # closer, finer photo structure used for the new terrain brushes.
     tone=gaussian_filter(lum,2.7)
     gx=sobel(tone,axis=1);gy=sobel(tone,axis=0)
     a=gaussian_filter(gx*gx,4);b=gaussian_filter(gx*gy,4);c=gaussian_filter(gy*gy,4)
     theta=.5*np.arctan2(2*b,a-c)+np.pi/2
-    for yy in np.arange(h*.33,h,5.5):
-        for xx in np.arange(0,w,7):
-            x=xx+rng.uniform(-2,2);y=yy+rng.uniform(-2,2)
-            if y<skyline[int(np.clip(x,0,w-1))]+2:continue
-            ix=int(np.clip(x,0,w-1));iy=int(np.clip(y,0,h-1))
-            angle=theta[iy,ix]
-            length=rng.uniform(12,33) if y<h*.72 else rng.uniform(7,19)
-            p=[]
-            for t in np.linspace(-.5,.5,7):
-                px=x+np.cos(angle)*length*t;py=y+np.sin(angle)*length*t
-                if 0<=px<w and 0<=py<h and py>skyline[int(px)]+1:p.append((px,py))
+    # The source, rather than interpolated authored ridges, determines every
+    # colored landform. Preserve small crags, snow edges and the human figure.
+    terrain_source=gaussian_filter(np.asarray(photo,dtype=float),(.65,.65,0))
+    terrain_lum=terrain_source@np.array([.2126,.7152,.0722])
+    terrain_source=np.clip(terrain_lum[:,:,None]+(terrain_source-terrain_lum[:,:,None])*1.2,0,255)
+    terrain_source=np.clip(terrain_source*.96+PAPER*.04,0,255)
+    land_tone=gaussian_filter(terrain_lum,1.05)
+    tx=sobel(land_tone,axis=1)/8;ty=sobel(land_tone,axis=0)/8
+    ta=gaussian_filter(tx*tx,1.8);tb=gaussian_filter(tx*ty,1.8);tc=gaussian_filter(ty*ty,1.8)
+    land_theta=.5*np.arctan2(2*tb,ta-tc)+np.pi/2
+    directions=np.dstack((np.cos(land_theta),np.sin(land_theta)))
+    land_rng=np.random.default_rng(32691)
+    def terrain_sample(p):
+        q=np.asarray(p);ix=np.clip(q[:,0].astype(int),0,w-1);iy=np.clip(q[:,1].astype(int),0,h-1)
+        return terrain_source[iy,ix]
+    def land_path(x,y,length):
+        ix=int(x);iy=int(y);origin=terrain_source[iy,ix]
+        # Integrate in both directions, choosing the same sign of the tensor
+        # tangent at every step. Curvature follows the actual fissure/facet.
+        branches=[];step=.9 if np.hypot(tx[iy,ix],ty[iy,ix])>8 else 2.1
+        for sign in [-1,1]:
+            p=np.array([x,y]);direction=directions[iy,ix]*sign;branch=[]
+            for _ in range(max(2,int(length/2/step))):
+                px=int(p[0]);py=int(p[1]);candidate=directions[py,px].copy()
+                if candidate@direction<0:candidate=-candidate
+                if candidate@direction<.72:break
+                direction=direction*.35+candidate*.65;direction/=np.linalg.norm(direction)
+                q=p+direction*step;qx=int(q[0]);qy=int(q[1])
+                if qx<0 or qx>=w or qy<0 or qy>=h or qy<skyline[qx]-1:break
+                # Stop before crossing a snow, cliff, silhouette or light/shade
+                # boundary, even when the local orientation remains similar.
+                color=terrain_source[qy,qx]
+                if np.linalg.norm(color-origin)>30 or np.linalg.norm(color-terrain_source[py,px])>18:break
+                branch.append(q.copy());p=q
+            branches.append(branch)
+        result=branches[0][::-1]+[np.array([x,y])]+branches[1]
+        if len(result)<2:
+            # A tiny tapered dab preserves source color where a sharp facial,
+            # snow or cliff edge cannot support a longer curved gesture.
+            delta=directions[iy,ix]*.65
+            return np.array([[x,y]-delta,[x,y]+delta])
+        return np.asarray(result)
+    # Overlapping body strokes share the tapered sky brush language. Seed
+    # positions are staggered and jittered, so no rows or crosshatch survive.
+    for pass_index in range(2):
+        spacing=2.7
+        for row,y0 in enumerate(np.arange(np.min(skyline)-2,h+3,spacing)):
+            for x0 in np.arange(-3+(row%2)*spacing*.5,w+3,spacing):
+                x=x0+land_rng.uniform(-spacing*.45,spacing*.45)
+                y=y0+land_rng.uniform(-spacing*.45,spacing*.45)
+                ix=int(x);iy=int(y)
+                if ix<0 or ix>=w or iy<0 or iy>=h or y<skyline[ix]-1:continue
+                foreground=y>h*(.72 if name=='desktop' else .66)
+                figure=(bx0*w<x<bx1*w and by0*h<y<by1*h and terrain_lum[iy,ix]<70)
+                target_spacing=(4 if foreground else 6.2) if pass_index else (2.7 if foreground else 6.7)
+                if land_rng.random()>(spacing/target_spacing)**2:continue
+                if figure:
+                    length=land_rng.uniform(8,18);width=land_rng.uniform(3,4.5)
+                elif foreground:
+                    length=land_rng.uniform(9,24);width=land_rng.uniform(3.8,6.5)
+                else:
+                    length=land_rng.uniform(19,49);width=land_rng.uniform(4.5,7.5)
+                if pass_index:
+                    length*=.65;width*=.48
+                # A strong gradient is transverse to these contour-following
+                # paths. Narrow the body there to protect snow and silhouettes.
+                strength=np.hypot(tx[iy,ix],ty[iy,ix])
+                width*=np.clip(7/(strength+1),.48,1)
+                p=land_path(x,y,length)
+                if len(p)<2:continue
+                col=terrain_sample(p);col=col*.60+col.mean(axis=0)*.40
+                col=np.clip(col+land_rng.uniform(-5,5),0,255)
+                start=land_rng.uniform(.19,.38) if pass_index==0 else land_rng.uniform(.45,.80)
+                span=land_rng.uniform(.10,.16)
+                plates[pass_index+1].path(p,width,col,start,span,.98,taper=True)
+    # Compact body gestures close excessive gaps where strong local contrasts
+    # shorten the paths, without filling them with a smooth photographic layer.
+    for y0 in np.arange(np.min(skyline),h,2.8):
+        for x0 in np.arange(0,w,2.8):
+            x=x0+land_rng.uniform(-1,1);y=y0+land_rng.uniform(-1,1)
+            ix=int(x);iy=int(y)
+            if ix<0 or ix>=w or iy<0 or iy>=h or y<skyline[ix]-1:continue
+            if plates[1].alpha[iy,ix]>.40 or land_rng.random()>.82:continue
+            p=land_path(x,y,land_rng.uniform(5,10))
             if len(p)<2:continue
-            p=np.asarray(p);col=np.mean(sample(p),axis=0)
-            plates[2].path(p,rng.uniform(1.25,2.3),col,rng.uniform(.45,.80),rng.uniform(.09,.16),.92)
-    # Refined colored ridges add crisp geography after the broad color arrives.
-    for i,spur in enumerate([g['skyline']]+g['spurs']):
-        p=subdivide(points(spur),3);col=sample(p)*.86
-        plates[2].path(p,1.1,col,.63+i*.014,.12,.88)
-    # The climber is drawn in short colored cross hatching within the authored
-    # silhouette so the human scale remains evident even in the small crop.
-    person=Image.new('L',size);ImageDraw.Draw(person).polygon([tuple(x) for x in points(g['person'])],fill=255)
-    mask=np.asarray(person)>0
-    bx0,by0,bx1,by1=g['subject']
-    for y in np.arange(by0*h,by1*h,2):
-        xx=np.arange(bx0*w,bx1*w,1);yy=y+(xx-(bx0+bx1)*w/2)*.35
-        valid=mask[np.clip(yy.astype(int),0,h-1),np.clip(xx.astype(int),0,w-1)]
-        p=np.column_stack((xx[valid],yy[valid]))
-        if len(p)>1:plates[2].path(p,1.7,sample(p)*.87,.65+rng.uniform(0,.12),.12,1)
-    # The original broad pass remains only at the near-ridge boundary. Replace
-    # its background with independent brush gestures; a separate random stream
-    # preserves every authored foreground/midground mark and its reveal timing.
+            col=terrain_sample(p)
+            width=land_rng.uniform(2.6,4.2)*np.clip(9/(np.hypot(tx[iy,ix],ty[iy,ix])+1),.65,1)
+            plates[1].path(p,width,col,
+                           land_rng.uniform(.21,.39),.12,.98,taper=True)
+    # Source-derived edge gestures recover the lit sawtooth wall, cliff teeth,
+    # snow margins and figure silhouette. No synthetic colored ridge outline.
+    for _,region,p,_ in sorted(paths,key=lambda q:-q[0]):
+        if region=='cloud':continue
+        p=p[::2]
+        if len(p)<3:continue
+        for start in range(0,len(p)-2,15):
+            stroke=p[start:start+17]
+            col=terrain_sample(stroke)
+            plates[2].path(stroke,land_rng.uniform(1.2,2.2),col,
+                           land_rng.uniform(.57,.79),.12,.91,taper=True)
+    # Preserve the approved background brush family in its own random stream.
     background=[Plate(w,h),Plate(w,h)]
     brush_rng=np.random.default_rng(19042)
     far_horizon={
@@ -337,8 +374,8 @@ def make(name):
                         span=brush_rng.uniform(.10,.17) if pass_index==0 else brush_rng.uniform(.09,.16)
                         background[pass_index].path(stroke,width,col,start,span,.98,taper=True)
                 x+=length*brush_rng.uniform(.80,1.07)+brush_rng.uniform(2,8)
-    # Pixel-level replacement leaves the near mountains and foreground exactly
-    # as authored, including their antialiased edges and six-sampler layout.
+    # The two colored plates share one boundary and the same tapered brush
+    # family, while retaining the three-plate/six-sampler runtime layout.
     background_mask=np.arange(h)[:,None]<skyline[None,:]-3
     for plate,replacement in zip(plates[1:],background):
         plate.rgb[background_mask]=replacement.rgb[background_mask]
