@@ -27,7 +27,7 @@ function syncUI() {
   range.value = Math.round(target * 1000);
   range.setAttribute('aria-valuetext', `${Math.round(target * 100)} percent drawn`);
   number.textContent = String(Math.round(target * 100)).padStart(3, '0');
-  field.classList.toggle('is-drawing', current < .65);
+  field.classList.toggle('is-drawing', current < .82);
 }
 function paint() {
   if (failed) return;

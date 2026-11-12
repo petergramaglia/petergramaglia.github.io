@@ -48,3 +48,13 @@ Peter requested that the slider build an increasingly refined and saturated draw
 Validation: 8 Node tests and 16 local Chrome browser tests pass. Added assertions cover zero runtime source-photo requests, a visible drawn canvas at the endpoint, and agreement between the GPU composition and the precomposited drawing fallback. Forward/reverse screenshot sequences supplement those checks. All previous interaction and failure-path tests now use the drawing assets. The 14 new published drawing assets are lossless, metadata-free, and aligned at 1440×810 or 900×1200; they total approximately 6.98 MiB across both variants. Only the active variant loads initially.
 
 Safari, Firefox, physical touch hardware, and assistive technology remain untested. GitHub Actions validation is reported by the PR checks for the corresponding commit.
+
+## Pacing refinement: developing the sketch before color
+
+Peter found that the initial sketch completed too early. The sketch plate now starts with a few simplified mountain gestures and adds actual scene structure through the first half: refined skyline and spurs, traced cloud/mountain contours, the climber, and foreground rock facets. Approximately 705 desktop and 744 mobile connected contour paths supplement the authored geometry. The offline coverage audit grows from 1,944 to 72,311 sketch pixels on desktop and 1,368 to 70,458 on mobile between 0 and 60 percent.
+
+Broad wisps begin after 45 percent; fine colored marks and saturation develop later. Separate opacity/pigment controls prevent the stroke schedule from making the picture look complete too soon. The last 10 percent still increases color strength and completes the fine wisps. The sketch fades out at the endpoint, and the fallback is regenerated from the two color plates to match.
+
+Astra high rendering, accessibility, and visual reviewers approved the updated code and actual checkpoints. The visual reviewer specifically confirmed new scene features appearing after 15 percent, a detailed pencil drawing at 60 percent, restrained color at 75 percent, and meaningful completion between 90 and 100 percent.
+
+Validation: 10 Node tests and 17 local Chrome browser tests pass. New tests use actual GPU output to verify substantial ink growth from 15 to 30 to 45 percent, no premature pigment, and more than 10 percent chroma growth from 90 to 100 percent. The existing endpoint/fallback comparison, interaction, failure, and responsive tests also pass. Browser verification limits remain as stated above.

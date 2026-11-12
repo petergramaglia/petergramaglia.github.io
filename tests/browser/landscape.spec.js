@@ -85,7 +85,7 @@ test('no JavaScript exposes biography and drawing', async ({ browser }) => {
 
 test('capture five desktop states and mobile composition', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
-  for (const p of [0, 250, 500, 750, 1000]) {
+  for (const p of [0, 150, 250, 300, 450, 500, 600, 750, 900, 1000]) {
     await resolve(page, p);
     await page.locator('#resolve').blur();
     await page.screenshot({ path: testInfo.outputPath(`desktop-${p}.png`) });
@@ -215,4 +215,30 @@ test('capture visible stroke growth and reversal', async ({ page }, testInfo) =>
     await resolve(page, amount); await page.locator('#resolve').blur();
     await page.screenshot({ path: testInfo.outputPath(`stroke-${amount}-${Date.now()}.png`) });
   }
+});
+
+test('structural sketch keeps growing before color and pigment develops late', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
+  const stages = await page.evaluate(() => {
+    const input = document.querySelector('#resolve'), canvas = document.querySelector('canvas');
+    const gl = canvas.getContext('webgl');
+    return [150, 300, 450, 600, 900, 1000].map((value) => {
+      input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true }));
+      const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+      gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      let ink = 0, chroma = 0;
+      for (let i = 0; i < pixels.length; i += 16) {
+        const rgb = [pixels[i], pixels[i + 1], pixels[i + 2]];
+        ink += Math.max(0, 238 - (rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722));
+        // Ivory's own warm tint is not pigment.
+        chroma += Math.max(0, Math.max(...rgb) - Math.min(...rgb) - 15);
+      }
+      return { value, ink, chroma };
+    });
+  });
+  expect(stages[1].ink).toBeGreaterThan(stages[0].ink * 1.2);
+  expect(stages[2].ink).toBeGreaterThan(stages[1].ink * 1.15);
+  expect(stages[0].chroma + stages[1].chroma + stages[2].chroma).toBe(0);
+  expect(stages[3].chroma).toBe(0);
+  expect(stages[5].chroma).toBeGreaterThan(stages[4].chroma * 1.1);
 });

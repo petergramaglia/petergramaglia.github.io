@@ -25,3 +25,11 @@ Keep direct drag, native keyboard range, reduced-motion behavior, bounded frame 
 Validate the actual shader in a real browser at 0, 25, 50, 75, and 100 percent. Also inspect successive small increments and reversal to verify traveling strokes rather than a dissolve. Assert that canvas remains visible at full progress, no source-photo requests occur, and the GPU endpoint agrees with the finished static drawing within sampling tolerance. Re-run orientation, network-failure, context-loss, keyboard, focus, reduced-motion, and gesture tests.
 
 An Astra high approach review approved this architecture with explicit requirements for full endpoint coverage, lossless/dilated timing, visible moving tips, bounded memory, and matching drawn fallbacks. Separate code/art reviews follow implementation.
+
+## Pacing refinement: sketch first, painting last
+
+Peter's next review identified that the complete sketch arrived in the first 15 percent. The revised timeline spends the first half developing scene structure: a few rough mountain gestures at the beginning, then progressively drawn peaks/ridges/skyline, cloud outlines, the climber, and rock facets. These are additions to the sketch itself, not colored hatch marks standing in for a detailed sketch.
+
+The sketch plate now carries structural arrival times through approximately 60 percent. Broad colored paths begin around 46 percent and grow through the later slider range; their global opacity rises smoothly from 45 to 100 percent. Fine wisps arrive around 70–98.5 percent, with their opacity rising from 68 to 100 percent. Saturation remains zero through 62 percent and reaches its full strength only at 100 percent. The pencil sketch remains fully present through 72 percent, then recedes as the painting comes together.
+
+`src/progression.js` owns the renderer's opacity/saturation bounds. Stroke arrival maps control path growth separately. The final fallback composites only the two color plates, matching the shader's fully faded sketch at the endpoint. New tests require substantial actual sketch-ink growth between 15, 30, and 45 percent, no premature pigment, and a meaningful saturation increase between 90 and 100 percent. Browser checkpoints now include 15, 30, 45, 60, and 90 percent in addition to the original five.
