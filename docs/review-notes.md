@@ -58,3 +58,11 @@ Broad wisps begin after 45 percent; fine colored marks and saturation develop la
 Astra high rendering, accessibility, and visual reviewers approved the updated code and actual checkpoints. The visual reviewer specifically confirmed new scene features appearing after 15 percent, a detailed pencil drawing at 60 percent, restrained color at 75 percent, and meaningful completion between 90 and 100 percent.
 
 Validation: 10 Node tests and 17 local Chrome browser tests pass. New tests use actual GPU output to verify substantial ink growth from 15 to 30 to 45 percent, no premature pigment, and more than 10 percent chroma growth from 90 to 100 percent. The existing endpoint/fallback comparison, interaction, failure, and responsive tests also pass. Browser verification limits remain as stated above.
+
+## Background brushwork and removal of the vignette
+
+Removed the full-screen navigation gradient and its abrupt 82-percent switch. Constant ivory surfaces immediately behind the text provide contrast throughout the drawing and fallback states. The sky, clouds, and distant mountains now use curved, tapered colored strokes with varied spacing and direction, replacing the smooth, closely spaced horizontal background ribbons. The foreground and midground treatment and the slow sketch-to-color progression remain intact.
+
+Independent Astra high accessibility, rendering, and visual reviewers approved the change. Reviews included desktop/mobile compositions, 320px, short and ultrawide layouts, and actual browser captures at 81, 82, and 83 percent. Added spacing separates the ultrawide tuner from Contact. Asset comparison confirmed byte-identical sketch plates/timing, unchanged finished pixels at and below the near skyline in both compositions, unchanged color plates/timing below the four-pixel edge gutter, and no untimed covered pixels. The lossless endpoint remains an exact offline composite; the real GPU/fallback comparison also passes.
+
+Final validation: 10 Node tests and 17 local Chrome browser tests pass. An earlier screenshot run entered fallback once; its targeted rerun and the final full run passed. Updated previews show the unshaded artwork and new background texture. Texture count, dimensions, resource bounds, interaction, and fallback contracts are unchanged. The browser/device coverage limits above still apply.

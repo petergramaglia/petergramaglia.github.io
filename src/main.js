@@ -27,7 +27,6 @@ function syncUI() {
   range.value = Math.round(target * 1000);
   range.setAttribute('aria-valuetext', `${Math.round(target * 100)} percent drawn`);
   number.textContent = String(Math.round(target * 100)).padStart(3, '0');
-  field.classList.toggle('is-drawing', current < .82);
 }
 function paint() {
   if (failed) return;
@@ -56,7 +55,7 @@ function fail(error) {
   cancelAnimationFrame(raf); raf = 0;
   input?.dispose(); observer?.disconnect(); renderer?.dispose();
   tuner.hidden = true;
-  field.classList.remove('is-ready', 'is-drawing', 'is-complete');
+  field.classList.remove('is-ready', 'is-complete');
   field.dataset.renderer = 'fallback';
 }
 function resize() {

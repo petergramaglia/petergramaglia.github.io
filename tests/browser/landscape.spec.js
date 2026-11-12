@@ -83,9 +83,9 @@ test('no JavaScript exposes biography and drawing', async ({ browser }) => {
   await context.close();
 });
 
-test('capture five desktop states and mobile composition', async ({ page }, testInfo) => {
+test('capture drawing stages and mobile composition', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
-  for (const p of [0, 150, 250, 300, 450, 500, 600, 750, 900, 1000]) {
+  for (const p of [0, 150, 250, 300, 450, 500, 600, 750, 810, 820, 830, 900, 1000]) {
     await resolve(page, p);
     await page.locator('#resolve').blur();
     await page.screenshot({ path: testInfo.outputPath(`desktop-${p}.png`) });

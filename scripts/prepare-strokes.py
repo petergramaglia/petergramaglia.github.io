@@ -25,7 +25,7 @@ class Plate:
         self.rgb=np.zeros((h,w,3),np.float32)
         self.alpha=np.zeros((h,w),np.float32)
         self.time=np.ones((h,w),np.float32)
-    def path(self,points,width,color,start,span,opacity=1):
+    def path(self,points,width,color,start,span,opacity=1,taper=False):
         p=np.asarray(points,dtype=float)
         if len(p)<2:return
         d=np.linalg.norm(np.diff(p,axis=0),axis=1);cum=np.r_[0,np.cumsum(d)]
@@ -42,7 +42,9 @@ class Plate:
             yy,xx=np.mgrid[y0:y1,x0:x1]
             t=np.clip(((xx-a[0])*(b[0]-a[0])+(yy-a[1])*(b[1]-a[1]))/(length*length),0,1)
             dist=np.hypot(xx-a[0]-t*(b[0]-a[0]),yy-a[1]-t*(b[1]-a[1]))
-            cov=np.clip(r+.6-dist,0,1)*opacity
+            progress=np.clip((cum[i]+t*length)/cum[-1],0,1) if taper else 0
+            radius=r*(.18+.82*np.sin(np.pi*progress)**.45) if taper else r
+            cov=np.clip(radius+.6-dist,0,1)*opacity
             c=colors if fixed else colors[i][None,None,:]*(1-t[:,:,None])+colors[i+1][None,None,:]*t[:,:,None]
             olda=self.alpha[y0:y1,x0:x1]
             oldrgb=self.rgb[y0:y1,x0:x1]
@@ -277,6 +279,71 @@ def make(name):
         valid=mask[np.clip(yy.astype(int),0,h-1),np.clip(xx.astype(int),0,w-1)]
         p=np.column_stack((xx[valid],yy[valid]))
         if len(p)>1:plates[2].path(p,1.7,sample(p)*.87,.65+rng.uniform(0,.12),.12,1)
+    # The original broad pass remains only at the near-ridge boundary. Replace
+    # its background with independent brush gestures; a separate random stream
+    # preserves every authored foreground/midground mark and its reveal timing.
+    background=[Plate(w,h),Plate(w,h)]
+    brush_rng=np.random.default_rng(19042)
+    far_horizon={
+        'desktop': [(0,.472),(.22,.438),(.47,.401),(.60,.391),(.72,.400),(.86,.398),(1,.395)],
+        'mobile': [(0,.395),(.44,.355),(.60,.355),(.78,.360),(1,.361)]
+    }
+    horizon=geo.curve(far_horizon[name],xs)*h
+    def background_region(x,y):
+        ix=int(np.clip(x,0,w-1));iy=int(np.clip(y,0,h-1))
+        if y>=skyline[ix]-2:return None
+        if y>horizon[ix]:return 'distant'
+        color=source[iy,ix]
+        return 'cloud' if color[2]-color[0]<55 and lum[iy,ix]>140 else 'sky'
+    # Staggered, jittered brush starts avoid ruled rows. The long axis curves
+    # independently for each gesture and tapers at both ends, leaving paper
+    # between marks rather than adding photographic grain to a solid fill.
+    for pass_index,spacing in enumerate([3.9,4.5]):
+        for y0 in np.arange(-8,np.max(skyline)+8,spacing):
+            x=-brush_rng.uniform(0,80)
+            while x<w+25:
+                y=y0+brush_rng.uniform(-spacing*.65,spacing*.65)
+                region=background_region(x,y)
+                distant=region=='distant'
+                if pass_index==0:
+                    length=brush_rng.uniform(24,65) if distant else brush_rng.uniform(48,125)
+                    width=brush_rng.uniform(8,11) if distant else brush_rng.uniform(7,10)
+                else:
+                    length=brush_rng.uniform(14,38) if distant else brush_rng.uniform(20,57)
+                    width=brush_rng.uniform(1.8,3.2) if distant else brush_rng.uniform(2,3.5)
+                if region is not None:
+                    ix=int(np.clip(x,0,w-1));iy=int(np.clip(y,0,h-1))
+                    if distant:
+                        # Local ridge/valley direction gives distant land its
+                        # own short facets, distinct from the open sky sweeps.
+                        angle=theta[iy,ix]
+                        angle=((angle+np.pi/2)%np.pi-np.pi/2)*.48
+                    else:
+                        angle=-.06+brush_rng.uniform(-.10,.10)
+                    bend=brush_rng.uniform(-3.2,3.2) if distant else brush_rng.uniform(-4.5,4.5)
+                    u=np.linspace(0,1,max(5,int(length/5)))
+                    p=np.column_stack((x+np.cos(angle)*length*u,
+                                       y+np.sin(angle)*length*u+bend*np.sin(np.pi*u)))
+                    # Restrict the whole mark to one family of forms; no brush
+                    # can carry blue sky through a cloud or into a distant ridge.
+                    keep=np.array([background_region(px,py)==region for px,py in p])
+                    for ids in np.split(np.arange(len(p)),np.flatnonzero(np.diff(keep))+1):
+                        if len(ids)<2 or not keep[ids[0]]:continue
+                        stroke=p[ids];col=sample(stroke)
+                        col=col*.22+np.mean(col,axis=0)*.78
+                        variation=brush_rng.uniform(-4,4) if region=='sky' else brush_rng.uniform(-7,7)
+                        col=np.clip(col+variation,0,255)
+                        start=(.14+max(y,0)/h*.20+brush_rng.uniform(0,.13)) if pass_index==0 else brush_rng.uniform(.45,.80)
+                        span=brush_rng.uniform(.10,.17) if pass_index==0 else brush_rng.uniform(.09,.16)
+                        background[pass_index].path(stroke,width,col,start,span,.98,taper=True)
+                x+=length*brush_rng.uniform(.80,1.07)+brush_rng.uniform(2,8)
+    # Pixel-level replacement leaves the near mountains and foreground exactly
+    # as authored, including their antialiased edges and six-sampler layout.
+    background_mask=np.arange(h)[:,None]<skyline[None,:]-3
+    for plate,replacement in zip(plates[1:],background):
+        plate.rgb[background_mask]=replacement.rgb[background_mask]
+        plate.alpha[background_mask]=replacement.alpha[background_mask]
+        plate.time[background_mask]=replacement.time[background_mask]
     # Preserve lengthwise growth while moving color into the second half.
     for plate,old_start,old_end,new_start,new_end in [
         (plates[1],.12,.60,.46,.90),(plates[2],.45,.96,.70,.985)]:

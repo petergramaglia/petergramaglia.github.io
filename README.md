@@ -29,7 +29,7 @@ npx playwright install chromium
 PLAYWRIGHT_CHANNEL=chromium npm run test:browser
 ```
 
-Tests cover real WebGL initialization, keyboard and pointer input, cancellation, responsive swaps and cached returns, About focus, no-JS/module/graphics/image failures, reduced motion, and short/narrow layouts. Screenshots at five resolve values and mobile/short layouts are saved under ignored `test-results/`. `@playwright/test` is a development dependency only; the deployed page uses no runtime libraries or third-party network services.
+Tests cover real WebGL initialization, keyboard and pointer input, cancellation, responsive swaps and cached returns, About focus, no-JS/module/graphics/image failures, reduced motion, and short/narrow layouts. Screenshots across the drawing stages, including 81/82/83 percent and mobile/short layouts, are saved under ignored `test-results/`. `@playwright/test` is a development dependency only; the deployed page uses no runtime libraries or third-party network services.
 
 ## Design and implementation
 
@@ -44,7 +44,7 @@ The [stroke revision](docs/stroke-revision.md) describes the current drawing beh
 
 There are two aspect-specific drawing sets. The desktop composition uses Peter's approved AI-expanded panorama, with the left ridge corrected against a second reference photograph. The mobile drawing is based on the original portrait photograph. Generated edges are disclosed in About. Contour-like marks are an artistic drawing, not elevation data. No coordinates, EXIF, or camera/location metadata are retained in the published derivatives.
 
-At every slider position, the artwork consists of drawn strokes on ivory. Each stroke has a per-pixel arrival time that increases along its path. The first half develops a detailed sketch of the ridges, clouds, climber, and rocks; pale wisps arrive afterward. Separate coverage and pigment ramps reserve the fully saturated painting for the endpoint. At full progress the canvas remains a colored drawing. No source photograph is loaded at runtime. The static fallback is the finished drawing, composited from the same delivered stroke plates. Navigation legibility shading is separate. No continuous animation runs after the control settles; reduced motion removes easing while preserving direct control.
+At every slider position, the artwork consists of drawn strokes on ivory. Each stroke has a per-pixel arrival time that increases along its path. The first half develops a detailed sketch of the ridges, clouds, climber, and rocks; pale wisps arrive afterward. Separate coverage and pigment ramps reserve the fully saturated painting for the endpoint. At full progress the canvas remains a colored drawing. No source photograph is loaded at runtime. The static fallback is the finished drawing, composited from the same delivered stroke plates. Small, constant paper backgrounds behind the navigation text provide contrast without shading the scene. No continuous animation runs after the control settles; reduced motion removes easing while preserving direct control.
 
 ### Regenerating assets
 
@@ -56,7 +56,7 @@ python3 -m venv /tmp/resolve-assets-env
 /tmp/resolve-assets-env/bin/python scripts/prepare-strokes.py
 ```
 
-The stroke generator samples the checked-in `assets/{desktop,mobile}/photo.webp` authoring inputs, writes lossless RGBA ink plates and PNG timing maps, and produces `/tmp/resolve-strokes-preview.jpg` for art review. `prepare-assets.py` retains the original source-normalization helpers and ridge geometry used by the stroke generator; it belongs to the first iteration and is not a deployment step. Inspect stroke growth and all checkpoints whenever changing inputs or parameters; the geometry is specific to this landscape.
+The stroke generator samples the checked-in `assets/{desktop,mobile}/photo.webp` authoring inputs, writes lossless RGBA ink plates and PNG timing maps, and produces `/tmp/resolve-stages-preview.jpg` for art review. `prepare-assets.py` retains the original source-normalization helpers and ridge geometry used by the stroke generator; it belongs to the first iteration and is not a deployment step. Inspect stroke growth and all checkpoints whenever changing inputs or parameters; the geometry is specific to this landscape.
 
 ## Limits
 

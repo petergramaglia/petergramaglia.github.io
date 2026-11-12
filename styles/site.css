@@ -5,18 +5,20 @@ a { color: inherit; text-underline-offset: 5px; }
 button, input { font: inherit; }
 [hidden] { display: none !important; }
 a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 7px; border-radius: 1px; }
-.field { position: relative; height: 100svh; min-height: 420px; overflow: hidden; isolation: isolate; color: #fff; --resolve: .03; }
-.initial-photo, .initial-photo img, .managed-photo, canvas, .legibility { position: absolute; inset: 0; width: 100%; height: 100%; }
+.field { position: relative; height: 100svh; min-height: 420px; overflow: hidden; isolation: isolate; --resolve: .03; }
+.initial-photo, .initial-photo img, .managed-photo, canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .initial-photo img, .managed-photo { object-fit: cover; object-position: var(--position-x, 50%) var(--position-y, 55%); }
 .managed-photo { visibility: hidden; }
 .has-managed .managed-photo { visibility: visible; }
 .has-managed .initial-photo { visibility: hidden; }
 canvas { visibility: hidden; touch-action: pan-y pinch-zoom; cursor: ew-resize; }
 .is-ready canvas { visibility: visible; }
-.legibility { pointer-events: none; background: linear-gradient(to bottom, rgb(13 30 45 / .78), rgb(13 30 45 / .64) 12%, transparent 35%, transparent 75%, rgb(13 30 45 / .66) 92%, rgb(13 30 45 / .78)); }
-.is-drawing { color: var(--ink); }
-.is-drawing .legibility { background: linear-gradient(to bottom, rgb(243 240 231 / .65), rgb(243 240 231 / .4) 12%, transparent 35%, transparent 72%, rgb(243 240 231 / .87)); }
 .masthead { position: absolute; top: max(var(--pad), env(safe-area-inset-top)); left: var(--pad); right: var(--pad); display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+/* Keep contrast local to the lettering so progress never recolors the scene. */
+.masthead h1, .masthead .quiet-link, .field-footer > * { background: rgb(243 240 231 / .94); border-radius: 2px; }
+.masthead h1 { padding: 8px 12px; }
+.masthead .quiet-link, .field-footer .quiet-link { padding: 10px 12px; }
+.field-footer .edition { padding: 8px 10px; }
 h1 { font-size: clamp(17px, 1.35vw, 22px); font-weight: 500; letter-spacing: -.055em; margin: 0; }
 .name-mark { display: inline-block; font-size: 13px; margin-left: 12px; vertical-align: 3px; opacity: .7; }
 .quiet-link { font-size: 13px; text-decoration: none; padding: 10px 0; }
@@ -54,5 +56,5 @@ body.about-open { overflow: hidden; }
 @media (orientation: portrait) { .initial-photo img { object-position: 50% 55%; } .tuner { bottom: max(70px, calc(env(safe-area-inset-bottom) + 55px)); width: 260px; } }
 @media (max-width: 380px) { .name-mark { display: none; } .edition { font-size: 9px; } }
 @media (max-height: 540px) and (orientation: landscape) { .field { min-height: 300px; } .masthead { top: 16px; } .tuner { left: auto; right: var(--pad); transform: none; bottom: 57px; width: 235px; } .field-footer { bottom: 10px; } }
-@media (min-aspect-ratio: 12/5) { .tuner { left: auto; right: var(--pad); transform: none; bottom: 57px; width: 235px; } }
+@media (min-aspect-ratio: 12/5) { .tuner { left: auto; right: var(--pad); transform: none; bottom: 65px; width: 235px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
