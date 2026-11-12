@@ -29,7 +29,7 @@ npx playwright install chromium
 PLAYWRIGHT_CHANNEL=chromium npm run test:browser
 ```
 
-Tests cover real WebGL initialization, keyboard and pointer input, cancellation, responsive swaps and cached returns, About focus, no-JS/module/graphics/image failures, reduced motion, and short/narrow layouts. Screenshots across the drawing stages, including 81/82/83 percent and mobile/short layouts, are saved under ignored `test-results/`. `@playwright/test` is a development dependency only; the deployed page uses no runtime libraries or third-party network services.
+Tests cover real WebGL initialization, keyboard and pointer input, cancellation, responsive swaps and cached returns, About focus, no-JS/module/graphics/image failures, reduced motion, and short/narrow layouts. A GPU regression checks that key terrain precedes clouds and that blue sky finishes last. Screenshots across the drawing stages and mobile/short layouts are saved under ignored `test-results/`. `@playwright/test` is a development dependency only; the deployed page uses no runtime libraries or third-party network services.
 
 ## Design and implementation
 
@@ -44,7 +44,7 @@ The [stroke revision](docs/stroke-revision.md) describes the current drawing beh
 
 There are two aspect-specific drawing sets. The desktop composition uses Peter's approved AI-expanded panorama, with the left ridge corrected against a second reference photograph. The mobile drawing is based on the original portrait photograph. Generated edges are disclosed in About. Contour-like marks are an artistic drawing, not elevation data. No coordinates, EXIF, or camera/location metadata are retained in the published derivatives.
 
-At every slider position, the artwork consists of drawn strokes on ivory. Each stroke has a per-pixel arrival time that increases along its path. The first half develops a detailed sketch of the ridges, clouds, climber, and rocks; pale wisps arrive afterward. Separate coverage and pigment ramps reserve the fully saturated painting for the endpoint. At full progress the canvas remains a colored drawing. No source photograph is loaded at runtime. The static fallback is the finished drawing, composited from the same delivered stroke plates. Small, constant paper backgrounds behind the navigation text provide contrast without shading the scene. No continuous animation runs after the control settles; reduced motion removes easing while preserving direct control.
+At every slider position, the artwork consists of drawn strokes on ivory. Each stroke has a per-pixel arrival time that increases along its path. The first half develops a detailed sketch. Important mountain features, the climber, and foreground rocks are painted first; supporting terrain, distant mountains, and clouds follow; blue sky finishes last. Opacity and pigment mature relative to each stroke's own arrival, so already painted regions stay complete while later regions remain sketched. At full progress the canvas remains a colored drawing. No source photograph is loaded at runtime. The static fallback is the finished drawing, composited from the same delivered stroke plates. Unboxed typography uses a narrow ivory glyph halo for contrast; the visible control contains only the slider and its number. No continuous animation runs after the control settles; reduced motion removes easing while preserving direct control.
 
 ### Regenerating assets
 

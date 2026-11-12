@@ -85,15 +85,17 @@ test('no JavaScript exposes biography and drawing', async ({ browser }) => {
 
 test('capture drawing stages and mobile composition', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
-  for (const p of [0, 150, 250, 300, 450, 500, 600, 750, 810, 820, 830, 900, 1000]) {
+  for (const p of [0, 150, 250, 300, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 990, 1000]) {
     await resolve(page, p);
     await page.locator('#resolve').blur();
     await page.screenshot({ path: testInfo.outputPath(`desktop-${p}.png`) });
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('#field')).toHaveAttribute('data-variant', 'mobile');
-  await resolve(page, 0); await page.screenshot({ path: testInfo.outputPath('mobile-drawing.png') });
-  await resolve(page, 1000); await page.screenshot({ path: testInfo.outputPath('mobile-finished.png') });
+  await resolve(page, 0); await page.locator('#resolve').blur();
+  await page.screenshot({ path: testInfo.outputPath('mobile-drawing.png') });
+  await resolve(page, 1000); await page.locator('#resolve').blur();
+  await page.screenshot({ path: testInfo.outputPath('mobile-finished.png') });
 });
 
 test('WebGL denial and module failure preserve static content', async ({ browser }) => {
@@ -211,18 +213,18 @@ test('finished GPU stroke composition matches the static drawing fallback', asyn
 
 test('capture visible stroke growth and reversal', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
-  for (const amount of [140, 170, 200, 230, 260, 290, 320, 290, 260, 230]) {
+  for (const amount of [140, 170, 200, 230, 260, 290, 320, 290, 260, 230, 550, 560, 570, 580, 590, 580, 570]) {
     await resolve(page, amount); await page.locator('#resolve').blur();
     await page.screenshot({ path: testInfo.outputPath(`stroke-${amount}-${Date.now()}.png`) });
   }
 });
 
-test('structural sketch keeps growing before color and pigment develops late', async ({ page }) => {
+test('structural sketch keeps growing before the regional painting begins', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
   const stages = await page.evaluate(() => {
     const input = document.querySelector('#resolve'), canvas = document.querySelector('canvas');
     const gl = canvas.getContext('webgl');
-    return [150, 300, 450, 600, 900, 1000].map((value) => {
+    return [150, 300, 450].map((value) => {
       input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true }));
       const pixels = new Uint8Array(canvas.width * canvas.height * 4);
       gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
@@ -239,6 +241,63 @@ test('structural sketch keeps growing before color and pigment develops late', a
   expect(stages[1].ink).toBeGreaterThan(stages[0].ink * 1.2);
   expect(stages[2].ink).toBeGreaterThan(stages[1].ink * 1.15);
   expect(stages[0].chroma + stages[1].chroma + stages[2].chroma).toBe(0);
-  expect(stages[3].chroma).toBe(0);
-  expect(stages[5].chroma).toBeGreaterThan(stages[4].chroma * 1.1);
+});
+
+test('terrain develops before clouds and the blue sky completes last', async ({ page }, testInfo) => {
+  // Match the desktop artwork aspect ratio so source landmarks map directly
+  // to GPU pixels, independently of the UI or responsive crop behavior.
+  await page.setViewportSize({ width: 1440, height: 810 });
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
+  const stages = await page.evaluate(() => {
+    const input = document.querySelector('#resolve'), canvas = document.querySelector('canvas');
+    const gl = canvas.getContext('webgl');
+    const regions = {
+      mountain: [.20, .43, .35, .66], figure: [.46, .69, .53, .85],
+      foreground: [.60, .80, .92, .97], distant: [.82, .44, .97, .58],
+      clouds: [.55, .12, .98, .33], sky: [.10, .02, .55, .16],
+    };
+    const samples = [450, 550, 650, 700, 800, 850, 900, 950, 990, 1000].map((value) => {
+      input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true }));
+      const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+      gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const colors = Object.fromEntries(Object.entries(regions).map(([name, [x0, y0, x1, y1]]) => {
+        const result = [];
+        for (let y = Math.floor(y0 * canvas.height); y < y1 * canvas.height; y += 4) {
+          for (let x = Math.floor(x0 * canvas.width); x < x1 * canvas.width; x += 4) {
+            const i = ((canvas.height - y - 1) * canvas.width + x) * 4;
+            result.push([pixels[i], pixels[i + 1], pixels[i + 2]]);
+          }
+        }
+        return [name, result];
+      }));
+      return { value, colors };
+    });
+    const start = samples[0].colors, end = samples.at(-1).colors;
+    // Measure closeness to the approved finished painting, normalized against
+    // the pencil stage. Exclude blue pixels from the cloud-bank rectangle.
+    return Object.fromEntries(samples.map(({ value, colors }) => [value, Object.fromEntries(
+      Object.keys(regions).map((name) => {
+        let remaining = 0, total = 0;
+        end[name].forEach((pixel, i) => {
+          if (name === 'clouds' && pixel[2] - pixel[0] >= 45) return;
+          for (let c = 0; c < 3; c++) {
+            remaining += Math.abs(colors[name][i][c] - pixel[c]);
+            total += Math.abs(start[name][i][c] - pixel[c]);
+          }
+        });
+        return [name, 1 - remaining / total];
+      })
+    )]));
+  });
+  await testInfo.attach('regional-progression.json', { body: JSON.stringify(stages, null, 2), contentType: 'application/json' });
+  for (const region of ['mountain', 'figure', 'foreground']) {
+    expect(stages[700][region]).toBeGreaterThan(.5);
+    expect(stages[700][region]).toBeGreaterThan(stages[700].clouds + .3);
+  }
+  expect(stages[700].clouds).toBeLessThan(.1);
+  expect(stages[850].sky).toBeLessThan(.1);
+  expect(stages[900].distant).toBeGreaterThan(.9);
+  expect(stages[900].clouds).toBeGreaterThan(.8);
+  expect(stages[900].sky).toBeLessThan(.6);
+  expect(stages[990].sky).toBeGreaterThan(.95);
 });

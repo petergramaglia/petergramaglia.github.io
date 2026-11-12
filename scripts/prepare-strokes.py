@@ -24,11 +24,13 @@ class Plate:
         self.rgb=np.zeros((h,w,3),np.float32)
         self.alpha=np.zeros((h,w),np.float32)
         self.time=np.ones((h,w),np.float32)
+        self.schedule=None
     def path(self,points,width,color,start,span,opacity=1,taper=False):
         p=np.asarray(points,dtype=float)
         if len(p)<2:return
         d=np.linalg.norm(np.diff(p,axis=0),axis=1);cum=np.r_[0,np.cumsum(d)]
         if cum[-1]<.01:return
+        if self.schedule is not None:start,span=self.schedule(p,width)
         colors=np.asarray(color)
         fixed=colors.ndim==1
         for i,(a,b) in enumerate(zip(p[:-1],p[1:])):
@@ -260,6 +262,44 @@ def make(name):
             delta=directions[iy,ix]*.65
             return np.array([[x,y]-delta,[x,y]+delta])
         return np.asarray(result)
+    # Timing uses only geometry, never another draw from the painting RNG.
+    # Cluster centers establish the peak, lit cliff, climber and large rocks
+    # before surrounding terrain. Fine work follows its own broad cluster.
+    anchors={
+        'desktop': [(.472,.42,.465,.15,.16),(.24,.54,.485,.12,.15),
+                    (.55,.60,.535,.17,.12),(.72,.88,.54,.20,.16),(.25,.90,.57,.22,.16)],
+        'mobile': [(.439,.39,.465,.21,.13),(.10,.55,.49,.20,.15),
+                   (.57,.55,.535,.23,.13),(.76,.88,.54,.25,.16),(.22,.91,.57,.27,.17)]
+    }
+    # Prioritize the actual silhouette and poles, with a soft spatial falloff.
+    # A rectangular subject box would reveal an artificial painted tile.
+    figure_mask=Image.new('L',size)
+    figure_draw=ImageDraw.Draw(figure_mask)
+    figure_draw.polygon([tuple(q) for q in points(g['person'])],fill=255)
+    for line in person_details[name][-2:]:
+        figure_draw.line([tuple(q) for q in points(line)],fill=255,width=2)
+    figure_distance=distance_transform_edt(np.asarray(figure_mask)==0)
+    def stroke_jitter(p):
+        x,y=np.mean(p,axis=0)
+        return (np.sin(x*12.9898+y*78.233)*43758.5453)%1
+    def terrain_schedule(p,width,detail=False,fill=False):
+        x,y=np.mean(p,axis=0)/[w,h]
+        onset=min(t+.105*np.hypot((x-cx)/rx,(y-cy)/ry)
+                  for cx,cy,t,rx,ry in anchors[name])
+        ix=int(np.clip(x*w,0,w-1));iy=int(np.clip(y*h,0,h-1))
+        human=.50+.055*np.clip((y-by0)/(by1-by0),0,1)+figure_distance[iy,ix]*.0035
+        onset=min(onset,human)
+        onset=np.clip(onset,.465,.715)+(.030 if detail else 0)
+        jitter=stroke_jitter(p)
+        length=np.linalg.norm(np.diff(p,axis=0),axis=1).sum()
+        structural=np.clip((length-6)/24,0,1)*np.clip(width/4.5,0,1)
+        onset+=.015*(1-structural)+(.035 if fill else 0)
+        span=np.clip(length/(w*.9),.014,.032)
+        # Per-stroke staggering exceeds pigment maturation, so a region
+        # accumulates distinct gestures instead of revealing as a radial wipe.
+        return np.clip(onset+(jitter-.5)*.055,.468,.770),span
+    plates[1].schedule=lambda p,width:terrain_schedule(p,width)
+    plates[2].schedule=lambda p,width:terrain_schedule(p,width,True)
     # Overlapping body strokes share the tapered sky brush language. Seed
     # positions are staggered and jittered, so no rows or crosshatch survive.
     for pass_index in range(2):
@@ -293,6 +333,7 @@ def make(name):
                 start=land_rng.uniform(.19,.38) if pass_index==0 else land_rng.uniform(.45,.80)
                 span=land_rng.uniform(.10,.16)
                 plates[pass_index+1].path(p,width,col,start,span,.98,taper=True)
+    plates[1].schedule=lambda p,width:terrain_schedule(p,width,fill=True)
     # Compact body gestures close excessive gaps where strong local contrasts
     # shorten the paths, without filling them with a smooth photographic layer.
     for y0 in np.arange(np.min(skyline),h,2.8):
@@ -332,6 +373,27 @@ def make(name):
         if y>horizon[ix]:return 'distant'
         color=source[iy,ix]
         return 'cloud' if color[2]-color[0]<55 and lum[iy,ix]>140 else 'sky'
+    def background_schedule(p,width,detail=False):
+        x,y=np.mean(p,axis=0);region=background_region(x,y)
+        jitter=stroke_jitter(p)
+        if region=='distant':
+            # The distant range grows outwards from behind the principal peak.
+            rank=np.clip(abs(x/w-.53)*1.4+(y/h-.39)*1.4,0,1)
+            onset=.70+.105*rank
+        elif region=='cloud':
+            rank=np.clip((x/w-.45)*1.25+( .35-y/h)*.7,0,1)
+            onset=.735+.095*rank
+        else:
+            # Blue sky starts along the horizon and works upward, with an
+            # irregular diagonal sweep instead of a uniform full-sky fade.
+            rank=.75*(1-np.clip(y/(h*.38),0,1))+.25*x/w
+            onset=.85+.10*rank
+        onset+=(.017 if detail else 0)+(jitter-.5)*.008
+        length=np.linalg.norm(np.diff(p,axis=0),axis=1).sum()
+        span=np.clip(length/(w*3),.012,.022)
+        return min(onset,.950),min(span,.968-min(onset,.950))
+    background[0].schedule=lambda p,width:background_schedule(p,width)
+    background[1].schedule=lambda p,width:background_schedule(p,width,True)
     # Staggered, jittered brush starts avoid ruled rows. The long axis curves
     # independently for each gesture and tapers at both ends, leaving paper
     # between marks rather than adding photographic grain to a solid fill.
@@ -381,11 +443,6 @@ def make(name):
         plate.rgb[background_mask]=replacement.rgb[background_mask]
         plate.alpha[background_mask]=replacement.alpha[background_mask]
         plate.time[background_mask]=replacement.time[background_mask]
-    # Preserve lengthwise growth while moving color into the second half.
-    for plate,old_start,old_end,new_start,new_end in [
-        (plates[1],.12,.60,.46,.90),(plates[2],.45,.96,.70,.985)]:
-        valid=plate.time<.99
-        plate.time[valid]=new_start+np.clip((plate.time[valid]-old_start)/(old_end-old_start),0,1)*(new_end-new_start)
     dest=ROOT/'assets'/name
     for i,plate in enumerate(plates):plate.save(dest,i)
     def smoothstep(a,b,x):
@@ -398,13 +455,16 @@ def make(name):
     frames=[];metrics={}
     for value in [0,.15,.3,.45,.6,.75,.9,1]:
         frame=np.broadcast_to(PAPER,(h,w,3)).copy()
-        opacity=[1-smoothstep(.72,1,value),smoothstep(.45,1,value),smoothstep(.68,1,value)]
+        opacity=[1-smoothstep(.965,1,value),1,1]
         for i,(rgb,coverage,time) in enumerate(decoded):
-            reveal=np.ones_like(time) if value==1 else smoothstep(time-.012,time+.012,value)
-            alpha=coverage*reveal*opacity[i]
-            sat=smoothstep(.62,1,value)
+            feather=.012 if i==0 else .003
+            reveal=np.ones_like(time) if value==1 else smoothstep(time-feather,time+feather,value)
+            age=value-time
+            maturity=1 if i==0 or value==1 else .55+.45*smoothstep(-.006,.018,age)
+            alpha=coverage*reveal*opacity[i]*maturity
+            sat=0 if i==0 else (1 if value==1 else smoothstep(-.006,.026,age))
             gray=rgb@np.array([.2126,.7152,.0722])
-            color=gray[:,:,None]*(1-sat)+rgb*sat
+            color=gray[:,:,None]*(1-np.asarray(sat)[...,None])+rgb*np.asarray(sat)[...,None]
             frame=frame*(1-alpha[:,:,None])+color*alpha[:,:,None]
         frames.append(Image.fromarray(np.clip(frame,0,255).astype('uint8')))
         sketch=decoded[0][1]*smoothstep(decoded[0][2]-.012,decoded[0][2]+.012,value)

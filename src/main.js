@@ -9,7 +9,6 @@ const canvas = document.querySelector('#landscape');
 const tuner = document.querySelector('#tuner');
 const range = document.querySelector('#resolve');
 const number = document.querySelector('#resolve-number');
-const hint = document.querySelector('#gesture-hint');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const lifecycle = new AbortController();
 let renderer, input, observer, manifest, requestedVariant;
@@ -91,7 +90,6 @@ async function start() {
     renderer = new LandscapeRenderer(canvas, fail);
     input = setupInteraction(canvas, range, () => target, (value) => {
       target = clamp(value);
-      hint.textContent = 'Sketch ↔ Color';
       syncUI();
       if (reduced.matches) { current = target; paint(); } else schedule();
     });

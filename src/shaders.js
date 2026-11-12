@@ -9,8 +9,8 @@ void main() {
   gl_Position = vec4(aPosition, 0., 1.);
 }`;
 
-// Stroke arrival controls pen travel. Independent layer opacity and saturation
-// give the scene time to become a detailed sketch before color takes over.
+// Atlas arrival controls both pen travel and local pigment maturity.
+// Regional schedules, rather than a global fade, order the painted forms.
 export const fragment = `
 precision mediump float;
 varying vec2 vUv;
@@ -25,23 +25,26 @@ uniform vec2 uOffset;
 uniform float uResolve;
 
 vec3 addStrokes(vec3 ground, sampler2D inkTexture, sampler2D timeTexture,
-               vec2 uv, float opacity, float saturation) {
+               vec2 uv, float opacity, bool colored) {
   vec4 ink = texture2D(inkTexture, uv);
   float arrival = texture2D(timeTexture, uv).r * 1.1 - .1;
-  float drawn = uResolve >= 1. ? 1. : smoothstep(arrival - .012, arrival + .012, uResolve);
+  float age = uResolve - arrival;
+  float drawn = uResolve >= 1. ? 1. : (colored
+    ? smoothstep(${bounds('strokeReveal')}, age)
+    : smoothstep(${bounds('sketchReveal')}, age));
+  float saturation = colored ? smoothstep(${bounds('strokePigment')}, age) : 0.;
+  float maturity = colored ? .55 + .45 * smoothstep(${bounds('strokeOpacity')}, age) : 1.;
+  if (uResolve >= 1. && colored) { saturation = 1.; maturity = 1.; }
   float luminance = dot(ink.rgb, vec3(.2126, .7152, .0722));
   vec3 color = mix(vec3(luminance), ink.rgb, saturation);
-  return mix(ground, color, ink.a * drawn * opacity);
+  return mix(ground, color, ink.a * drawn * opacity * maturity);
 }
 void main() {
   vec2 uv = vUv * uScale + uOffset;
   vec3 result = vec3(243. / 255., 240. / 255., 231. / 255.);
   float sketch = 1. - smoothstep(${bounds('sketchFade')}, uResolve);
-  float broad = smoothstep(${bounds('broadOpacity')}, uResolve);
-  float detail = smoothstep(${bounds('detailOpacity')}, uResolve);
-  float saturation = smoothstep(${bounds('saturation')}, uResolve);
-  result = addStrokes(result, uInk0, uTime0, uv, sketch, 0.);
-  result = addStrokes(result, uInk1, uTime1, uv, broad, saturation);
-  result = addStrokes(result, uInk2, uTime2, uv, detail, saturation);
+  result = addStrokes(result, uInk0, uTime0, uv, sketch, false);
+  result = addStrokes(result, uInk1, uTime1, uv, 1., true);
+  result = addStrokes(result, uInk2, uTime2, uv, 1., true);
   gl_FragColor = vec4(result, 1.);
 }`;
