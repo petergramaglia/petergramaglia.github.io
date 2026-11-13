@@ -1,101 +1,50 @@
-<!DOCTYPE HTML>
+<!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
-
-  <link rel="stylesheet" href="bootstrap.css">
-  <title class = "title">Peter Gramaglia</title>
-  <link rel="icon" href="robot.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f0e7">
+  <meta name="description" content="Peter Gramaglia. Software, artificial intelligence, and time in the mountains. An interactive field study.">
+  <title>Peter Gramaglia — Field study</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles/site.css">
 </head>
-
 <body>
-  <div class="view" style="background-image: url('nzlnd.jpg'); background-repeat: no-repeat; background-size: cover; background-position: center center;">
-    <div class="container">
-    
-      <nav class="navbar navbar-light navbar-expand-md  justify-content-center">
-        <div class="navbar-brand d-flex w-50 mr-auto">Peter Gramaglia</div>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsingNavbar3">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="navbar-collapse collapse w-100" id="collapsingNavbar3">
-
-            <ul class="nav navbar-nav ml-auto w-100 justify-content-end">
-                <li class="nav-item">
-
-                    <a class="nav-link" href="#">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="https://petergramaglia.github.io/resume.html">Resume</a>
-                </li>
-            </ul>
-        </div>
-      </nav>
-
-     
-
-      
-        <h3 class="text-center">Hi! I'm Peter.</h3>
-        <div class="intro-container">
-            <p class="text-center ">I am rising senior studying Computer Science at the Tufts University School of Engineering. I'm interested in software engineering, artificial intelligence, and product management. I grew up in the Boston area, and I currently live in Somerville, Massachusetts. In my free time I like to hike mountains, climb rocks, and go to the beach. </p>
-
-            <p class="text-center ">Currently I'm working on two projects – I'm leading a team of undergrads to build a web app to make PDFs more accessible to screen readers, and I'm helping develop the idea and algorithms for a natural language processing early-stage startup. This past spring semester I was abroad at the University of New South Wales in Sydney, Australia. There, I took Theory of Computation; Artificial Intelligence; The Marine Environment; and Mind, Ethics, and Freedom: Intro to Philosophy. </p>
-
-            <p class="text-center "> Here are links to my <a href="https://www.linkedin.com/in/peter-gramaglia-35bb97169/">LinkedIn</a> and <a href="https://www.facebook.com/peter.gramaglia">Facebook</a>.</p> 
-        </div>
-
-
-
-        <br>
-
-        <!--<a href="https://www.linkedin.com/" target="_blank"><img src="img/linkedin.png" style="width: 40px; height: 40px; border-radius: 70px"></a>-->
-
-        <div class="text-center">
-          <img src="iceland.png" alt="headshot" style="width: 150px; height: 150px; border-radius: 90px; margin: 0 30px 0 30px; box-shadow: 0px 2px 8px #46484a;">
-        </div>
-
-        <br><br>
-        <div class="intro-container"> <p class="text-center "> I took this background photo in New Zealand :) </p> </div>
-
-        <!--<a href="https://github.com/emilytran99" target="_blank"><img src="img/github.png" style="width: 40px; height: 40px; border-radius: 70px"></a>-->
-
-
-<br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-
+  <main id="field" class="field" aria-label="Interactive mountain landscape" aria-describedby="landscape-description">
+    <p id="landscape-description" class="sr-only">A climber crossing a rocky alpine slope beneath a mountain ridge in warm light. Drag the slider to build a painting, from a rough sketch to layered colored brushstrokes.</p>
+    <picture id="initial-photo" class="initial-photo">
+      <source media="(orientation: portrait)" srcset="assets/mobile/finished.webp?v=5f6c536b8f8b06768580">
+      <img src="assets/desktop/finished.webp?v=71953790666f381ac538" alt="A brushstroke painting of a climber crossing a rocky alpine slope beneath a mountain ridge in warm light." fetchpriority="high">
+    </picture>
+    <img id="managed-photo" class="managed-photo" alt="" aria-hidden="true">
+    <canvas id="landscape" aria-hidden="true"></canvas>
+    <header class="masthead">
+      <h1>Peter Gramaglia</h1>
+      <a class="about-link quiet-link" href="#about">About</a>
+    </header>
+    <div id="tuner" class="tuner" hidden>
+      <label class="sr-only" for="resolve">Draw landscape</label>
+      <div class="scale">
+        <div class="ticks" aria-hidden="true"></div>
+        <div class="indicator" aria-hidden="true"></div>
+        <input id="resolve" type="range" min="0" max="1000" value="30" aria-valuetext="3 percent drawn" aria-describedby="gesture-hint">
       </div>
-  </div>
-      
+      <span id="resolve-number" aria-hidden="true">003</span>
+      <p id="gesture-hint" class="sr-only">Drag the slider or use the arrow keys to draw the landscape. Home returns to the sketch; End completes the painting.</p>
+    </div>
+    <footer class="field-footer">
+      <a class="quiet-link" href="https://www.linkedin.com/in/peter-gramaglia-35bb97169/">Contact</a>
+    </footer>
+  </main>
+  <section id="about" class="about-content" aria-labelledby="about-title">
+    <div class="about-heading"><span class="eyebrow">A little context</span><a class="close-about quiet-link" href="#field" aria-label="Close About">Close <span aria-hidden="true">×</span></a></div>
+    <h2 id="about-title">Peter Gramaglia.</h2>
+    <p class="about-intro">Software, artificial intelligence,<br>and time in the mountains.</p>
+    <p>I've worked on making PDFs more accessible to screen readers and on ideas and algorithms for an early-stage natural language processing startup.</p>
+    <p>This is a small experiment in looking more closely. Begin with a gesture of the mountains. Draw out the ridges, clouds, and small details, then let wisps of color gather into a painting. Stop wherever you like.</p>
+    <div class="about-links"><a href="https://github.com/petergramaglia">GitHub ↗</a><a href="https://www.linkedin.com/in/peter-gramaglia-35bb97169/">LinkedIn ↗</a></div>
+    <p class="image-note">An original mountain photograph, with AI-expanded edges for the desktop composition. The drawing is an artistic interpretation, not an elevation map.</p>
+  </section>
+  <script type="module" src="src/main.js"></script>
 </body>
-
 </html>
