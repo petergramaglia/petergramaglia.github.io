@@ -10,6 +10,7 @@ from pathlib import Path
 import importlib.util
 import json
 from asset_revisions import update_revisions
+from source_features import register_features, save_overlays
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy.ndimage import gaussian_filter, sobel, distance_transform_edt, map_coordinates
@@ -83,7 +84,15 @@ def make(name):
     g=geo.GEOMETRY[name]
     size=(1440,810) if name=='desktop' else (900,1200)
     w,h=size
-    photo=Image.open(ROOT/f'assets/{name}/photo.webp').convert('RGB').resize(size,Image.Resampling.LANCZOS)
+    source_photo=Image.open(ROOT/f'assets/{name}/photo.webp').convert('RGB')
+    photo=source_photo.resize(size,Image.Resampling.LANCZOS)
+    registered=register_features(source_photo,name)
+    save_overlays(source_photo,registered,name)
+    feature_scale=np.array(size)/source_photo.size
+    features=[{**feature,'path':feature['path']*feature_scale} for feature in registered]
+    mountain_features=[f for f in features if f['kind'] in ('opening','mountain')]
+    foreground_features=[f for f in features if f['kind']=='foreground']
+    human_features=[f for f in features if f['kind']=='person']
     source=np.asarray(photo,dtype=float)
     source=gaussian_filter(source,(2.2,2.2,0))
     lum=source@np.array([.2126,.7152,.0722])
@@ -95,50 +104,22 @@ def make(name):
     plates[0].preserve_earliest=True
     xs=np.arange(w)/w
     skyline=geo.curve(g['skyline'],xs)*h
-    bounds=[skyline]+[geo.curve(r,xs)*h for r in g['ridges']]
-    bounds[-1]=np.maximum(bounds[-1],h*1.035)
     def sample(p):
         p=np.asarray(p);x=np.clip(p[:,0].astype(int),0,w-1);y=np.clip(p[:,1].astype(int),0,h-1)
         return source[y,x]
-    def points(norm):return np.asarray(norm)*np.array([w,h])
-    def subdivide(p,step=4):
-        p=np.asarray(p);u=np.r_[0,np.cumsum(np.linalg.norm(np.diff(p,axis=0),axis=1))]
-        q=np.linspace(0,u[-1],max(2,int(u[-1]/step)))
-        return np.column_stack((np.interp(q,u,p[:,0]),np.interp(q,u,p[:,1])))
-    # A few open construction gestures establish the mountain at zero. They
-    # intentionally omit the full skyline, foreground, clouds and climber.
-    # Subsequent paths add actual geographic structure over the first half.
-    rough = {
-      'desktop': [[(.08,.60),(.24,.40),(.35,.43)],[(.37,.43),(.472,.365),(.67,.55)],
-                  [(.472,.365),(.50,.47),(.57,.56)]],
-      'mobile': [[(.19,.39),(.439,.332),(.67,.42)],[(.439,.332),(.46,.42),(.58,.48)]]
-    }
-    for line in rough[name]:
-        plates[0].path(subdivide(points(line)),.83,INK,-.09,.045,.40)
-    # First establish only the skyline and principal mountain ridge. The
-    # nearer slope/foreground boundaries join the human in the second phase.
-    for i,line in enumerate(bounds[:-1]):
-        sections=5 if i==0 else 4
-        for section,idx in enumerate(np.array_split(np.arange(0,w,3),sections)):
-            p=np.column_stack((idx,line[idx]))
-            start=(.035+section*.021) if i==0 else (.08+section*.021 if i==1 else .25+(i-2)*.025+section*.013)
-            plates[0].path(p,1.05 if i==0 else .72,INK,start,.055,.76 if i==0 else .48)
-    for i,spur in enumerate(g['spurs']):
-        p=subdivide(points(spur))
-        major=[0,2,3]
-        start=.075+major.index(i)*.023 if i in major else .435+i*.014
-        plates[0].path(p,.85,INK,start,.075,.58)
-    # Cloud gestures are open contours following the prominent cloud bank.
-    clouds = {
-      'desktop': [[(.51,.342),(.56,.294),(.62,.255),(.72,.211),(.83,.169),(.96,.135)],
-                  [(.55,.30),(.66,.284),(.75,.267),(.87,.222),(.99,.181)],
-                  [(.68,.337),(.79,.326),(.9,.317),(1,.30)]],
-      'mobile': [[(.485,.311),(.53,.298),(.58,.276),(.66,.249),(.75,.228),(.85,.199),(1,.166)],
-                 [(.59,.267),(.69,.27),(.78,.257),(.9,.24),(1,.232)],
-                 [(.50,.337),(.61,.336),(.72,.326),(.82,.327),(.96,.315)]]
-    }
-    for i,line in enumerate(clouds[name]):
-        plates[0].path(subdivide(points(line)),.68,INK,.625+i*.028,.07,.38)
+    # Opening gestures are partials of the registered peak edges, not a
+    # separate approximate scaffold. All later structural marks use the same
+    # source paths, preserving crag teeth and disconnected occluding crests.
+    for feature in mountain_features:
+        p=feature['path']
+        if feature['id']=='peak_left':
+            plates[0].path(p[int(len(p)*.4):],.83,INK,-.09,.045,.40)
+        elif feature['id']=='peak_right':
+            plates[0].path(p[:int(len(p)*.3)],.83,INK,-.09,.045,.40)
+    for i,feature in enumerate(mountain_features):
+        p=feature['path'];parts=max(1,int(len(p)/170))
+        for section,indices in enumerate(np.array_split(np.arange(len(p)),parts)):
+            plates[0].path(p[indices],.95,INK,.035+i*.009+section*.012,.05,.67)
     # Trace selected long source edges as individual connected pencil paths.
     # Nonmaximum suppression selects contours; minimum arc length and a cap
     # per region discard photographic grain. These are new ridge/rock/cloud
@@ -204,34 +185,21 @@ def make(name):
         # Reduce pixel-scale stair stepping without erasing a rock's corners.
         p=gaussian_filter(p,(.65,0))[::2]
         plates[0].path(p,.72 if region=='cloud' else .82,INK,start,span,opacity)
-    # A few long source rock edges define foreground scale during phase two;
-    # leave the dense small-rock contour map for the detail phase above.
-    foreground_edges=[]
-    for lo,hi in [(0,.28),(.28,.53),(.53,.78),(.78,1.01)]:
-        candidates=[entry for entry in paths if entry[1]=='rock'
-                    and lo<=entry[2][:,0].mean()/w<hi
-                    and entry[2][:,1].mean()/h>.84]
-        if not candidates:continue
-        _,_,p,_=max(candidates,key=lambda entry:entry[0])
-        ids=np.linspace(0,len(p)-1,min(12,len(p))).astype(int)
-        foreground_edges.append(p[ids])
-    for i,p in enumerate(foreground_edges):
-        plates[0].path(subdivide(p),.95,INK,.265+i*.02,.065,.62)
-    # Phase two establishes the rough full human silhouette and both poles;
-    # facial, clothing and inner-leg detail waits for the detail phase.
-    p=subdivide(points(g['person']+[g['person'][0]]))
-    plates[0].path(p,1.05,INK,.235,.095,.78)
-    person_details={
-      'desktop': [[(.49,.705),(.5,.705),(.503,.715),(.493,.722),(.49,.705)],
-                   [(.485,.718),(.499,.726),(.509,.724)],[(.49,.737),(.505,.741),(.508,.767),(.494,.771)],
-                   [(.499,.774),(.501,.806),(.498,.836)],[(.459,.765),(.466,.845)],[(.527,.76),(.527,.852)]],
-      'mobile': [[(.479,.649),(.498,.649),(.502,.66),(.488,.671),(.479,.649)],
-                  [(.47,.671),(.49,.688),(.516,.679)],[(.479,.692),(.514,.697),(.516,.719),(.485,.72)],
-                  [(.5,.723),(.505,.75),(.499,.777)],[(.415,.705),(.438,.794)],[(.563,.707),(.56,.787)]]
-    }
-    for i,line in enumerate(person_details[name]):
-        start=.27+(i-4)*.025 if i>=4 else .435+i*.018
-        plates[0].path(subdivide(points(line)),.8,INK,start,.065 if i>=4 else .05,.66)
+    # Background construction also follows actual source cloud edges. The
+    # old smooth cloud-bank diagonals are not structural features in the photo.
+    cloud_candidates=[entry for entry in paths if entry[1]=='cloud'
+                      and entry[2][:,1].mean()<h*.35 and entry[2][:,0].mean()>w*.40]
+    cloud_candidates=sorted(cloud_candidates,key=lambda entry:len(entry[2]),reverse=True)[:3]
+    for i,(_,_,p,_) in enumerate(cloud_candidates):
+        plates[0].path(p,.68,INK,.625+i*.028,.07,.38)
+    # Phase two adds only actual local rock/slope edges and the registered
+    # climber silhouette/poles. No full-width foreground guide crosses them.
+    for i,feature in enumerate(foreground_features):
+        plates[0].path(feature['path'],.95,INK,.26+i*.018,.06,.62)
+    for i,feature in enumerate(human_features):
+        plates[0].path(feature['path'],1.05,INK,.235+i*.028,.095 if i==0 else .065,.78)
+    for i,feature in enumerate(f for f in features if f['kind']=='person_detail'):
+        plates[0].path(feature['path'],.8,INK,.435+i*.018,.05,.66)
     print(name,'structural paths',counts,flush=True)
     # Keep the approved distant-land orientation field independent of the
     # closer, finer photo structure used for the new terrain brushes.
@@ -288,17 +256,16 @@ def make(name):
         mask=Image.new('L',size);draw=ImageDraw.Draw(mask)
         for line in lines:draw.line([tuple(q) for q in line],fill=255,width=1)
         return distance_transform_edt(np.asarray(mask)==0)
-    ridge_lines=[points(g['skyline']),points(g['ridges'][0])]
-    ridge_lines.extend(points(g['spurs'][i]) for i in [0,2,3])
+    ridge_lines=[f['path'] for f in mountain_features]
     ridge_distance=line_distance(ridge_lines)
-    figure_lines=[points(g['person']+[g['person'][0]])]
-    figure_lines.extend(points(line) for line in person_details[name][-2:])
+    figure_lines=[f['path'] for f in human_features]
     figure_distance=line_distance(figure_lines)
     figure_interior_mask=Image.new('L',size)
-    ImageDraw.Draw(figure_interior_mask).polygon([tuple(q) for q in points(g['person'])],fill=255)
+    silhouette=next(f['path'] for f in human_features if f['id']=='human')
+    ImageDraw.Draw(figure_interior_mask).polygon([tuple(q) for q in silhouette],fill=255)
     figure_interior=np.asarray(figure_interior_mask)>0
-    foreground_lines=[np.column_stack((np.arange(w)[::3],line[::3])) for line in bounds[2:-1]]
-    foreground_distance=line_distance(foreground_lines+foreground_edges)
+    foreground_lines=[f['path'] for f in foreground_features]
+    foreground_distance=line_distance(foreground_lines)
     def stroke_jitter(p):
         x,y=np.mean(p,axis=0)
         return (np.sin(x*12.9898+y*78.233)*43758.5453)%1

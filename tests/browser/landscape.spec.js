@@ -285,6 +285,38 @@ test('mountain framework precedes the figure and foreground, then detail and col
   }
 });
 
+test('early pigment follows photographic cliff edges instead of old construction bands', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 810 });
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
+  const stages = await page.evaluate(() => {
+    const input = document.querySelector('#resolve'), canvas = document.querySelector('canvas');
+    const gl = canvas.getContext('webgl');
+    // Landmarks inspected on the 1672×941 source photograph, independently
+    // of the generated guides: real cliff tops/perimeters and two old guides
+    // that crossed featureless interiors. Never sample UI text or controls.
+    const landmarks = { cragTop: [743, 466], litCliffEdge: [353, 547],
+      oldCrossFaceLine: [700, 510], oldForegroundBand: [350, 734] };
+    return Object.fromEntries([550, 650].map((value) => {
+      input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true }));
+      const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+      gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      return [value, Object.fromEntries(Object.entries(landmarks).map(([name, [sx, sy]]) => {
+        const cx = Math.round(sx / 1672 * canvas.width), cy = Math.round(sy / 941 * canvas.height);
+        let pigment = 0;
+        for (let y = cy - 5; y <= cy + 5; y++) for (let x = cx - 5; x <= cx + 5; x++) {
+          const i = ((canvas.height - y - 1) * canvas.width + x) * 4;
+          pigment += Math.max(0, Math.abs(3 * pixels[i] - 4 * pixels[i + 1] + pixels[i + 2]) - 5);
+        }
+        return [name, pigment];
+      }))];
+    }));
+  });
+  expect(stages[550].cragTop).toBeGreaterThan(50);
+  expect(stages[550].litCliffEdge).toBeGreaterThan(50);
+  expect(stages[650].oldCrossFaceLine).toBe(0);
+  expect(stages[650].oldForegroundBand).toBe(0);
+});
+
 test('color follows ridges, human and foreground edges, then surface fill and sky', async ({ page }, testInfo) => {
   // Match the desktop artwork aspect ratio so source landmarks map directly
   // to GPU pixels, independently of the UI or responsive crop behavior.

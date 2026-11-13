@@ -41,6 +41,7 @@ The [stroke revision](docs/stroke-revision.md) describes the current drawing beh
 - `src/interaction.js`, `src/main.js`: direct manipulation, frame-independent damping, lifecycle, reduced motion.
 - `src/about.js`: progressive native modal; biography remains ordinary HTML without JavaScript.
 - `assets/`: three timed stroke layers per composition, finished-drawing fallbacks, source photographs, manifest, and favicon.
+- `scripts/source_features.py`: separate photographic crest, cliff, boulder, and human contours, registered to source edges for the opening sketch and first colored strokes.
 
 There are two aspect-specific drawing sets. The desktop composition uses Peter's approved AI-expanded panorama, with the left ridge corrected against a second reference photograph. The mobile drawing is based on the original portrait photograph. Generated edges are disclosed in About. Contour-like marks are an artistic drawing, not elevation data. No coordinates, EXIF, or camera/location metadata are retained in the published derivatives.
 
@@ -59,6 +60,8 @@ python3 -m venv /tmp/resolve-assets-env
 The stroke generator samples the checked-in `assets/{desktop,mobile}/photo.webp` authoring inputs, writes lossless RGBA ink plates and PNG timing maps, and produces `/tmp/resolve-stages-preview.jpg` for art review. `prepare-assets.py` retains the original source-normalization helpers and ridge geometry used by the stroke generator; it belongs to the first iteration and is not a deployment step. Inspect stroke growth and all checkpoints whenever changing inputs or parameters; the geometry is specific to this landscape.
 
 The generator also records content hashes for every delivered image in the manifest. Runtime image URLs use those revisions; the manifest is fetched without caching. If editing an asset outside the generator, run `python3 scripts/asset_revisions.py` afterward. The static checks reject outdated hashes. Finish asset generation before previewing or deploying a revision.
+
+Structural features use anchors in each source photograph's native pixel coordinates. A narrow search follows coherent image edges between those anchors. Separate cliff crests terminate at their visible ends; foreground structure uses individual rock outlines, without full-width construction bands. Run the asset environment's Python on `scripts/source_features.py` to produce photo-registration overlays under `/tmp/resolve-source-features/`. Review those overlays as well as rendered stages when changing a feature: a strong image gradient alone does not establish that a path represents the intended landform.
 
 ## Limits
 
