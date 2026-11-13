@@ -85,7 +85,7 @@ test('no JavaScript exposes biography and drawing', async ({ browser }) => {
 
 test('capture drawing stages and mobile composition', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
-  for (const p of [0, 150, 250, 300, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 990, 1000]) {
+  for (const p of [0, 150, 200, 250, 300, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 990, 1000]) {
     await resolve(page, p);
     await page.locator('#resolve').blur();
     await page.screenshot({ path: testInfo.outputPath(`desktop-${p}.png`) });
@@ -94,6 +94,10 @@ test('capture drawing stages and mobile composition', async ({ page }, testInfo)
   await expect(page.locator('#field')).toHaveAttribute('data-variant', 'mobile');
   await resolve(page, 0); await page.locator('#resolve').blur();
   await page.screenshot({ path: testInfo.outputPath('mobile-drawing.png') });
+  for (const p of [200, 400, 600]) {
+    await resolve(page, p); await page.locator('#resolve').blur();
+    await page.screenshot({ path: testInfo.outputPath(`mobile-${p}.png`) });
+  }
   await resolve(page, 1000); await page.locator('#resolve').blur();
   await page.screenshot({ path: testInfo.outputPath('mobile-finished.png') });
 });
@@ -219,28 +223,47 @@ test('capture visible stroke growth and reversal', async ({ page }, testInfo) =>
   }
 });
 
-test('structural sketch keeps growing before the regional painting begins', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' }); await ready(page);
-  const stages = await page.evaluate(() => {
-    const input = document.querySelector('#resolve'), canvas = document.querySelector('canvas');
-    const gl = canvas.getContext('webgl');
-    return [150, 300, 450].map((value) => {
-      input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true }));
-      const pixels = new Uint8Array(canvas.width * canvas.height * 4);
-      gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-      let ink = 0, chroma = 0;
-      for (let i = 0; i < pixels.length; i += 16) {
-        const rgb = [pixels[i], pixels[i + 1], pixels[i + 2]];
-        ink += Math.max(0, 238 - (rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722));
-        // Ivory's own warm tint is not pigment.
-        chroma += Math.max(0, Math.max(...rgb) - Math.min(...rgb) - 15);
-      }
-      return { value, ink, chroma };
-    });
-  });
-  expect(stages[1].ink).toBeGreaterThan(stages[0].ink * 1.2);
-  expect(stages[2].ink).toBeGreaterThan(stages[1].ink * 1.15);
-  expect(stages[0].chroma + stages[1].chroma + stages[2].chroma).toBe(0);
+test('mountain framework precedes the figure and foreground, then detail and color', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const [width, height, regions] of [
+    [1440, 810, { mountain: [0, .32, 1, .67], figure: [.455, .715, .54, .86], foreground: [0, .86, 1, .99], clouds: [.55, .1, 1, .3] }],
+    [900, 1200, { mountain: [0, .30, 1, .625], figure: [.40, .67, .58, .80], foreground: [0, .82, 1, .99], clouds: [.5, .1, 1, .28] }],
+  ]) {
+    await page.setViewportSize({ width, height }); await ready(page);
+    const stages = await page.evaluate((regions) => {
+      const input = document.querySelector('#resolve'), canvas = document.querySelector('canvas');
+      const gl = canvas.getContext('webgl');
+      return Object.fromEntries([200, 400, 450, 600].map((value) => {
+        input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true }));
+        const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+        gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        let chroma = 0;
+        for (let i = 0; i < pixels.length; i += 16) {
+          chroma += Math.max(0, Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) - Math.min(pixels[i], pixels[i + 1], pixels[i + 2]) - 15);
+        }
+        const ink = Object.fromEntries(Object.entries(regions).map(([name, [x0, y0, x1, y1]]) => {
+          let mass = 0;
+          for (let y = Math.floor(y0 * canvas.height); y < y1 * canvas.height; y += 2) {
+            for (let x = Math.floor(x0 * canvas.width); x < x1 * canvas.width; x += 2) {
+              const i = ((canvas.height - y - 1) * canvas.width + x) * 4;
+              mass += Math.max(0, 238 - (pixels[i] * .2126 + pixels[i + 1] * .7152 + pixels[i + 2] * .0722));
+            }
+          }
+          return [name, mass];
+        }));
+        return [value, { ...ink, chroma }];
+      }));
+    }, regions);
+    expect(stages[200].mountain).toBeGreaterThan(100);
+    expect(stages[200].figure).toBe(0);
+    expect(stages[200].foreground).toBe(0);
+    expect(stages[400].figure).toBeGreaterThan(100);
+    expect(stages[400].foreground).toBeGreaterThan(100);
+    expect(stages[400].clouds).toBe(0);
+    expect(stages[450].mountain).toBeGreaterThan(stages[400].mountain);
+    expect(stages[200].chroma + stages[400].chroma + stages[450].chroma).toBe(0);
+    expect(stages[600].chroma).toBeGreaterThan(0);
+  }
 });
 
 test('terrain develops before clouds and the blue sky completes last', async ({ page }, testInfo) => {

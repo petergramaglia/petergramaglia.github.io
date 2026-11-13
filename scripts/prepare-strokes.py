@@ -25,6 +25,7 @@ class Plate:
         self.alpha=np.zeros((h,w),np.float32)
         self.time=np.ones((h,w),np.float32)
         self.schedule=None
+        self.preserve_earliest=False
     def path(self,points,width,color,start,span,opacity=1,taper=False):
         p=np.asarray(points,dtype=float)
         if len(p)<2:return
@@ -56,7 +57,7 @@ class Plate:
             # Store threshold even at antialiased edges: empty texels must not
             # pull thin stroke edges toward the final frame when filtered.
             take=(cov>.02)&((cov>=olda*.65)|(olda<.1))
-            time[take]=threshold[take]
+            time[take]=np.minimum(time[take],threshold[take]) if self.preserve_earliest else threshold[take]
             olda[:]=newa
     def save(self,dest,index):
         covered=self.alpha>.02
@@ -90,6 +91,7 @@ def make(name):
     source=np.clip(lum[:,:,None]+(source-lum[:,:,None])*1.2,0,255)
     source=np.clip(source*.96+PAPER*.04,0,255)
     plates=[Plate(w,h) for _ in range(3)]
+    plates[0].preserve_earliest=True
     xs=np.arange(w)/w
     skyline=geo.curve(g['skyline'],xs)*h
     bounds=[skyline]+[geo.curve(r,xs)*h for r in g['ridges']]
@@ -107,23 +109,24 @@ def make(name):
     # Subsequent paths add actual geographic structure over the first half.
     rough = {
       'desktop': [[(.08,.60),(.24,.40),(.35,.43)],[(.37,.43),(.472,.365),(.67,.55)],
-                  [(.472,.365),(.50,.47),(.57,.56)],[(.14,.68),(.28,.65),(.40,.70)]],
-      'mobile': [[(.19,.39),(.439,.332),(.67,.42)],[(.439,.332),(.46,.42),(.58,.48)],
-                 [(.03,.48),(.23,.55),(.38,.54)]]
+                  [(.472,.365),(.50,.47),(.57,.56)]],
+      'mobile': [[(.19,.39),(.439,.332),(.67,.42)],[(.439,.332),(.46,.42),(.58,.48)]]
     }
     for line in rough[name]:
         plates[0].path(subdivide(points(line)),.83,INK,-.09,.045,.40)
-    # Draw each refined ridge in sections, so the first fifteen percent is
-    # visibly an unfinished outline rather than a complete landscape.
+    # First establish only the skyline and principal mountain ridge. The
+    # nearer slope/foreground boundaries join the human in the second phase.
     for i,line in enumerate(bounds[:-1]):
         sections=5 if i==0 else 4
         for section,idx in enumerate(np.array_split(np.arange(0,w,3),sections)):
             p=np.column_stack((idx,line[idx]))
-            start=(.065+section*.025) if i==0 else (.16+i*.035+section*.018)
-            plates[0].path(p,1.05 if i==0 else .72,INK,start,.065,.76 if i==0 else .48)
+            start=(.035+section*.021) if i==0 else (.08+section*.021 if i==1 else .25+(i-2)*.025+section*.013)
+            plates[0].path(p,1.05 if i==0 else .72,INK,start,.055,.76 if i==0 else .48)
     for i,spur in enumerate(g['spurs']):
         p=subdivide(points(spur))
-        plates[0].path(p,.85,INK,.10+i*.016,.12,.58)
+        major=[0,2,3]
+        start=.075+major.index(i)*.023 if i in major else .435+i*.014
+        plates[0].path(p,.85,INK,start,.075,.58)
     # Cloud gestures are open contours following the prominent cloud bank.
     clouds = {
       'desktop': [[(.51,.342),(.56,.294),(.62,.255),(.72,.211),(.83,.169),(.96,.135)],
@@ -134,7 +137,7 @@ def make(name):
                  [(.50,.337),(.61,.336),(.72,.326),(.82,.327),(.96,.315)]]
     }
     for i,line in enumerate(clouds[name]):
-        plates[0].path(subdivide(points(line)),.68,INK,.21+i*.035,.11,.38)
+        plates[0].path(subdivide(points(line)),.68,INK,.625+i*.028,.07,.38)
     # Trace selected long source edges as individual connected pencil paths.
     # Nonmaximum suppression selects contours; minimum arc length and a cap
     # per region discard photographic grain. These are new ridge/rock/cloud
@@ -192,17 +195,31 @@ def make(name):
         cx,cy=p.mean(axis=0)/[w,h]
         if bx0<cx<bx1 and by0<cy<by1:continue
         rank=counts[region]/limits[region];counts[region]+=1
-        # Broad shapes arrive first; small facets follow across .3--.6.
-        if region=='cloud':start=.23+rank*.11;span=.07;opacity=.38
-        elif region=='mountain':start=.20+rank*.27;span=.075;opacity=.50
-        else:start=.32+rank*.20;span=.075;opacity=.54
+        # Fine contours follow the complete mountain/human/foreground skeleton.
+        # Background sketching waits until the later distant-land/cloud work.
+        if region=='cloud':start=.68+rank*.10;span=.055;opacity=.38
+        elif region=='mountain':start=.435+rank*.18;span=.055;opacity=.50
+        else:start=.445+rank*.23;span=.055;opacity=.54
         # Reduce pixel-scale stair stepping without erasing a rock's corners.
         p=gaussian_filter(p,(.65,0))[::2]
         plates[0].path(p,.72 if region=='cloud' else .82,INK,start,span,opacity)
-    # The human figure is discovered after the main landforms. Silhouette,
-    # hood, pack, bent arms, legs and walking poles have independent timings.
+    # A few long source rock edges define foreground scale during phase two;
+    # leave the dense small-rock contour map for the detail phase above.
+    foreground_edges=[]
+    for lo,hi in [(0,.28),(.28,.53),(.53,.78),(.78,1.01)]:
+        candidates=[entry for entry in paths if entry[1]=='rock'
+                    and lo<=entry[2][:,0].mean()/w<hi
+                    and entry[2][:,1].mean()/h>.84]
+        if not candidates:continue
+        _,_,p,_=max(candidates,key=lambda entry:entry[0])
+        ids=np.linspace(0,len(p)-1,min(12,len(p))).astype(int)
+        foreground_edges.append(p[ids])
+    for i,p in enumerate(foreground_edges):
+        plates[0].path(subdivide(p),.95,INK,.265+i*.02,.065,.62)
+    # Phase two establishes the rough full human silhouette and both poles;
+    # facial, clothing and inner-leg detail waits for the detail phase.
     p=subdivide(points(g['person']+[g['person'][0]]))
-    plates[0].path(p,1.05,INK,.31,.12,.78)
+    plates[0].path(p,1.05,INK,.235,.095,.78)
     person_details={
       'desktop': [[(.49,.705),(.5,.705),(.503,.715),(.493,.722),(.49,.705)],
                    [(.485,.718),(.499,.726),(.509,.724)],[(.49,.737),(.505,.741),(.508,.767),(.494,.771)],
@@ -212,7 +229,8 @@ def make(name):
                   [(.5,.723),(.505,.75),(.499,.777)],[(.415,.705),(.438,.794)],[(.563,.707),(.56,.787)]]
     }
     for i,line in enumerate(person_details[name]):
-        plates[0].path(subdivide(points(line)),.8,INK,.38+i*.019,.07,.66)
+        start=.27+(i-4)*.025 if i>=4 else .435+i*.018
+        plates[0].path(subdivide(points(line)),.8,INK,start,.065 if i>=4 else .05,.66)
     print(name,'structural paths',counts,flush=True)
     # Keep the approved distant-land orientation field independent of the
     # closer, finer photo structure used for the new terrain brushes.

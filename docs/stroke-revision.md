@@ -53,3 +53,9 @@ This revision replaces the earlier global opacity/saturation ramps. Broad stroke
 The shader uses progress minus arrival to mature each colored mark over a short interval. The pencil stays visible in areas waiting for paint, followed by a brief cleanup near completion. Timing leaves room for late marks to mature before the endpoint, and the finished fallback stays identical to the approved painting. Tests measure actual GPU progress in mountain, figure, foreground, distant-terrain, cloud, and sky regions.
 
 The interface contains an unboxed italic serif name, About and Contact text links, and a thin slider with its number. The edition, field-study label, and visible sketch/color hint are removed. A narrow ivory halo follows the text glyphs for steady contrast without a scene overlay. Native keyboard controls, 44px interaction targets, focus indicators, and screen-reader instructions remain.
+
+## Drawing hierarchy before detail
+
+The opening sketch now has three distinct phases: major mountain peaks and ridges first, then the rough human silhouette and defining foreground edges, then finer details and colored strokes. Sparse structural lines establish the scene before source-traced rock, mountain, figure, and cloud details appear. Cloud contours wait for the later background work rather than filling the early sky.
+
+Only the pencil plate and its timing change for this refinement. The colored stroke geometry, palette, regional paint order, finished painting, and minimal interface remain unchanged. GPU checks in both compositions require mountain lines before the human/foreground, rough scene outlines before cloud detail, and detail/pigment growth afterward.
