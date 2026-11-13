@@ -280,42 +280,55 @@ def make(name):
             delta=directions[iy,ix]*.65
             return np.array([[x,y]-delta,[x,y]+delta])
         return np.asarray(result)
-    # Timing uses only geometry, never another draw from the painting RNG.
-    # Cluster centers establish the peak, lit cliff, climber and large rocks
-    # before surrounding terrain. Fine work follows its own broad cluster.
-    anchors={
-        'desktop': [(.472,.42,.465,.15,.16),(.24,.54,.485,.12,.15),
-                    (.55,.60,.535,.17,.12),(.72,.88,.54,.20,.16),(.25,.90,.57,.22,.16)],
-        'mobile': [(.439,.39,.465,.21,.13),(.10,.55,.49,.20,.15),
-                   (.57,.55,.535,.23,.13),(.76,.88,.54,.25,.16),(.22,.91,.57,.27,.17)]
-    }
-    # Prioritize the actual silhouette and poles, with a soft spatial falloff.
-    # A rectangular subject box would reveal an artificial painted tile.
-    figure_mask=Image.new('L',size)
-    figure_draw=ImageDraw.Draw(figure_mask)
-    figure_draw.polygon([tuple(q) for q in points(g['person'])],fill=255)
-    for line in person_details[name][-2:]:
-        figure_draw.line([tuple(q) for q in points(line)],fill=255,width=2)
-    figure_distance=distance_transform_edt(np.asarray(figure_mask)==0)
+    # Color follows the same construction hierarchy as pencil. Distances are
+    # measured to narrow line masks, never filled subject/terrain regions.
+    # This schedules existing painted gestures without changing their pixels.
+    def line_distance(lines):
+        mask=Image.new('L',size);draw=ImageDraw.Draw(mask)
+        for line in lines:draw.line([tuple(q) for q in line],fill=255,width=1)
+        return distance_transform_edt(np.asarray(mask)==0)
+    ridge_lines=[points(g['skyline']),points(g['ridges'][0])]
+    ridge_lines.extend(points(g['spurs'][i]) for i in [0,2,3])
+    ridge_distance=line_distance(ridge_lines)
+    figure_lines=[points(g['person']+[g['person'][0]])]
+    figure_lines.extend(points(line) for line in person_details[name][-2:])
+    figure_distance=line_distance(figure_lines)
+    figure_interior_mask=Image.new('L',size)
+    ImageDraw.Draw(figure_interior_mask).polygon([tuple(q) for q in points(g['person'])],fill=255)
+    figure_interior=np.asarray(figure_interior_mask)>0
+    foreground_lines=[np.column_stack((np.arange(w)[::3],line[::3])) for line in bounds[2:-1]]
+    foreground_distance=line_distance(foreground_lines+foreground_edges)
     def stroke_jitter(p):
         x,y=np.mean(p,axis=0)
         return (np.sin(x*12.9898+y*78.233)*43758.5453)%1
     def terrain_schedule(p,width,detail=False,fill=False):
         x,y=np.mean(p,axis=0)/[w,h]
-        onset=min(t+.105*np.hypot((x-cx)/rx,(y-cy)/ry)
-                  for cx,cy,t,rx,ry in anchors[name])
-        ix=int(np.clip(x*w,0,w-1));iy=int(np.clip(y*h,0,h-1))
-        human=.50+.055*np.clip((y-by0)/(by1-by0),0,1)+figure_distance[iy,ix]*.0035
-        onset=min(onset,human)
-        onset=np.clip(onset,.465,.715)+(.030 if detail else 0)
+        ix=np.clip(p[:,0].astype(int),0,w-1);iy=np.clip(p[:,1].astype(int),0,h-1)
+        # Include the brush radius and almost the entire path: a wide body
+        # merely touching a contour must not expose the adjacent surface early.
+        def near(distance,band):
+            return np.percentile(distance[iy,ix],90)+width*.5<=band
         jitter=stroke_jitter(p)
         length=np.linalg.norm(np.diff(p,axis=0),axis=1).sum()
-        structural=np.clip((length-6)/24,0,1)*np.clip(width/4.5,0,1)
-        onset+=.015*(1-structural)+(.035 if fill else 0)
-        span=np.clip(length/(w*.9),.014,.032)
-        # Per-stroke staggering exceeds pigment maturation, so a region
-        # accumulates distinct gestures instead of revealing as a radial wipe.
-        return np.clip(onset+(jitter-.5)*.055,.468,.770),span
+        span=np.clip(length/(w*.9),.014,.028)
+        follow=(.004 if detail else 0)+(.008 if fill else 0)
+        # Terrain boundaries pass behind the person. They must not reveal a
+        # horizontal strip through an otherwise unpainted human interior.
+        crosses_figure=np.any(figure_interior[iy,ix]&(figure_distance[iy,ix]>4))
+        if not crosses_figure and near(ridge_distance,7):
+            onset=.470+.055*x+(jitter-.5)*.012+follow
+        elif not crosses_figure and near(figure_distance,4):
+            onset=.570+.040*np.clip((y-by0)/(by1-by0),0,1)+(jitter-.5)*.010+follow
+        elif not crosses_figure and near(foreground_distance,5):
+            onset=.575+.045*x+(jitter-.5)*.012+follow
+        else:
+            # Only after both outline passes do the mountain, human and rock
+            # surfaces accumulate body strokes, then detail and compact fill.
+            rank=np.clip(.45*x+.55*(y-.35)/.65,0,1)
+            onset=.675+.075*rank+(jitter-.5)*.045
+            onset+=(.018 if detail else 0)+(.025 if fill else 0)
+            onset=max(.675,onset)
+        return np.clip(onset,.468,.810),span
     plates[1].schedule=lambda p,width:terrain_schedule(p,width)
     plates[2].schedule=lambda p,width:terrain_schedule(p,width,True)
     # Overlapping body strokes share the tapered sky brush language. Seed

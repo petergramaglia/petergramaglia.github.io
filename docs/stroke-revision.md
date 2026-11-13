@@ -59,3 +59,9 @@ The interface contains an unboxed italic serif name, About and Contact text link
 The opening sketch now has three distinct phases: major mountain peaks and ridges first, then the rough human silhouette and defining foreground edges, then finer details and colored strokes. Sparse structural lines establish the scene before source-traced rock, mountain, figure, and cloud details appear. Cloud contours wait for the later background work rather than filling the early sky.
 
 Only the pencil plate and its timing change for this refinement. The colored stroke geometry, palette, regional paint order, finished painting, and minimal interface remain unchanged. GPU checks in both compositions require mountain lines before the human/foreground, rough scene outlines before cloud detail, and detail/pigment growth afterward.
+
+## The same hierarchy for colored strokes
+
+Color now repeats the construction order, rather than filling the mountain and human immediately after the pencil stages. Existing colored strokes close to major ridge lines arrive first. Strokes along the human silhouette, poles, and defining foreground edges arrive next. Mountain faces, the human's interior, ground surfaces, and compact detail strokes wait until those colored boundaries are established. Distant terrain, clouds, and the final blue-sky sequence retain their later timing.
+
+Narrow line-distance bands classify existing strokes without changing their geometry or palette. Classification includes the stroke width and most of its path, so a large mark merely touching a boundary cannot reveal a broad surface early. Figure priority uses its outline, not a filled polygon. The final painting and all pencil assets remain unchanged. GPU tests measure actual pigment independently from gray pencil to verify the color hierarchy.

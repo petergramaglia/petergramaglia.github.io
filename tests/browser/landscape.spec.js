@@ -266,7 +266,7 @@ test('mountain framework precedes the figure and foreground, then detail and col
   }
 });
 
-test('terrain develops before clouds and the blue sky completes last', async ({ page }, testInfo) => {
+test('color follows ridges, human and foreground edges, then surface fill and sky', async ({ page }, testInfo) => {
   // Match the desktop artwork aspect ratio so source landmarks map directly
   // to GPU pixels, independently of the UI or responsive crop behavior.
   await page.setViewportSize({ width: 1440, height: 810 });
@@ -300,27 +300,42 @@ test('terrain develops before clouds and the blue sky completes last', async ({ 
     // the pencil stage. Exclude blue pixels from the cloud-bank rectangle.
     return Object.fromEntries(samples.map(({ value, colors }) => [value, Object.fromEntries(
       Object.keys(regions).map((name) => {
-        let remaining = 0, total = 0;
+        let remaining = 0, total = 0, pigment = 0, finalPigment = 0;
         end[name].forEach((pixel, i) => {
           if (name === 'clouds' && pixel[2] - pixel[0] >= 45) return;
+          // Pencil gray mixed with ivory lies on 3R−4G+B=0. Measure
+          // pigment off that axis, allowing for byte-rounding noise.
+          const color = colors[name][i];
+          pigment += Math.max(0, Math.abs(3 * color[0] - 4 * color[1] + color[2]) - 5);
+          finalPigment += Math.max(0, Math.abs(3 * pixel[0] - 4 * pixel[1] + pixel[2]) - 5);
           for (let c = 0; c < 3; c++) {
             remaining += Math.abs(colors[name][i][c] - pixel[c]);
             total += Math.abs(start[name][i][c] - pixel[c]);
           }
         });
-        return [name, 1 - remaining / total];
+        return [name, { completion: 1 - remaining / total, pigment: pigment / finalPigment }];
       })
     )]));
   });
   await testInfo.attach('regional-progression.json', { body: JSON.stringify(stages, null, 2), contentType: 'application/json' });
-  for (const region of ['mountain', 'figure', 'foreground']) {
-    expect(stages[700][region]).toBeGreaterThan(.5);
-    expect(stages[700][region]).toBeGreaterThan(stages[700].clouds + .3);
+  // The first colored marks belong to mountain structure, not the figure
+  // or foreground. Their limited coverage must not fill the mountain face.
+  expect(stages[550].mountain.pigment).toBeGreaterThan(.005);
+  expect(stages[550].mountain.pigment).toBeLessThan(.3);
+  expect(stages[550].figure.pigment).toBe(0);
+  expect(stages[550].foreground.pigment).toBe(0);
+  // Human and foreground acquire colored edges while their interiors wait.
+  for (const region of ['figure', 'foreground']) {
+    expect(stages[650][region].pigment).toBeGreaterThan(.005);
+    expect(stages[650][region].pigment).toBeLessThan(.55);
+    expect(stages[900][region].completion).toBeGreaterThan(.9);
   }
-  expect(stages[700].clouds).toBeLessThan(.1);
-  expect(stages[850].sky).toBeLessThan(.1);
-  expect(stages[900].distant).toBeGreaterThan(.9);
-  expect(stages[900].clouds).toBeGreaterThan(.8);
-  expect(stages[900].sky).toBeLessThan(.6);
-  expect(stages[990].sky).toBeGreaterThan(.95);
+  expect(stages[650].mountain.pigment).toBeLessThan(.4);
+  expect(stages[800].mountain.pigment).toBeGreaterThan(stages[650].mountain.pigment + .3);
+  expect(stages[700].clouds.pigment).toBe(0);
+  expect(stages[850].sky.pigment).toBeLessThan(.1);
+  expect(stages[900].distant.completion).toBeGreaterThan(.9);
+  expect(stages[900].clouds.completion).toBeGreaterThan(.8);
+  expect(stages[900].sky.completion).toBeLessThan(.6);
+  expect(stages[990].sky.completion).toBeGreaterThan(.95);
 });
