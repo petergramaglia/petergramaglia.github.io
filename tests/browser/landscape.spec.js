@@ -8,6 +8,25 @@ const resolve = async (page, value) => {
   await expect(page.locator('#resolve')).toHaveAttribute('aria-valuetext', `${Math.round(value / 10)} percent drawn`);
 };
 
+test('preview revalidates old documents and loads versioned drawing assets', async ({ page, request }) => {
+  const conditional = await request.get('/assets/desktop/time1.png', {
+    headers: { 'If-Modified-Since': 'Thu, 31 Dec 2099 23:59:59 GMT', 'If-None-Match': 'old-drawing' },
+  });
+  expect(conditional.status()).toBe(200);
+  expect(conditional.headers()['cache-control']).toBe('no-store');
+  const manifest = await (await request.get('/assets/manifest.json')).json();
+  const loaded = new Map();
+  page.on('response', (response) => {
+    const url = new URL(response.url());
+    if (url.pathname.startsWith('/assets/desktop/')) loaded.set(url.pathname.split('/').at(-1), url.searchParams.get('v'));
+  });
+  await ready(page);
+  for (const [file, revision] of Object.entries(manifest.desktop.revisions)) expect(loaded.get(file), file).toBe(revision);
+  const document = await page.reload();
+  expect(document.headers()['cache-control']).toBe('no-store');
+  await expect(page.locator('#field')).toHaveAttribute('data-renderer', 'ready');
+});
+
 test('GPU render, keyboard endpoints, and drag back from finished drawing', async ({ page }) => {
   const errors = []; page.on('pageerror', (error) => errors.push(error.message));
   await ready(page);
@@ -58,7 +77,7 @@ test('reduced motion applies immediately and updates at runtime', async ({ page 
 });
 
 test('missing map fails to finished drawing while About remains usable', async ({ page }) => {
-  await page.route('**/time2.png', (route) => route.abort());
+  await page.route('**/time2.png?*', (route) => route.abort());
   await page.goto('/'); await expect(page.locator('#field')).toHaveAttribute('data-renderer', 'fallback');
   await expect(page.locator('#tuner')).toBeHidden();
   expect(await page.locator('#initial-photo img').evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
@@ -121,7 +140,7 @@ test('WebGL denial and module failure preserve static content', async ({ browser
 
 test('failed orientation change retains a complete managed drawing', async ({ page }) => {
   await ready(page);
-  await page.route('**/mobile/time2.png', (route) => route.abort());
+  await page.route('**/mobile/time2.png?*', (route) => route.abort());
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('#field')).toHaveAttribute('data-renderer', 'fallback');
   await expect(page.locator('#managed-photo')).toHaveJSProperty('naturalWidth', 1440);

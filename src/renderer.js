@@ -16,10 +16,18 @@ function compile(gl, type, source) {
   return shader;
 }
 
-async function loadImages(variant, signal) {
+function assetURL(variant, file, meta) {
+  const revision = meta.revisions?.[file];
+  if (!revision) throw new Error(`Landscape asset revision missing (${file})`);
+  const url = new URL(`${variant}/${file}`, assetRoot);
+  url.searchParams.set('v', revision);
+  return url;
+}
+
+async function loadImages(variant, meta, signal) {
   const files = ['layer0.webp', 'time0.png', 'layer1.webp', 'time1.png', 'layer2.webp', 'time2.png'];
   const results = await Promise.allSettled(files.map(async (file) => {
-    const response = await fetch(new URL(`${variant}/${file}`, assetRoot), { signal });
+    const response = await fetch(assetURL(variant, file, meta), { signal });
     if (!response.ok) throw new Error(`Landscape image unavailable (${response.status})`);
     const bitmap = await createImageBitmap(await response.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
     if (signal.aborted) { bitmap.close(); throw new DOMException('Aborted', 'AbortError'); }
@@ -78,7 +86,7 @@ export class LandscapeRenderer {
     let images = [], textures = [], ownsImages = false;
     try {
       const cached = this.cache.get(variant);
-      images = cached ? cached.images : await loadImages(variant, controller.signal);
+      images = cached ? cached.images : await loadImages(variant, meta, controller.signal);
       ownsImages = !cached;
       if (this.disposed || generation !== this.generation) return false;
       const gl = this.gl;
@@ -102,7 +110,7 @@ export class LandscapeRenderer {
       const photo = cached?.photo || new Image();
       photo.className = 'managed-photo'; photo.id = 'managed-photo';
       photo.alt = ''; photo.setAttribute('aria-hidden', 'true');
-      if (!cached) photo.src = new URL(`${variant}/finished.webp`, assetRoot).href;
+      if (!cached) photo.src = assetURL(variant, 'finished.webp', meta).href;
       await Promise.race([
         photo.decode(),
         new Promise((_, reject) => {

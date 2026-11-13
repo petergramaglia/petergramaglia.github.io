@@ -7,10 +7,10 @@ An interactive field study: drag the landscape or use the tuning scale to draw i
 From this directory:
 
 ```sh
-python3 -m http.server 4173 --bind 127.0.0.1
+python3 scripts/preview.py
 ```
 
-Open `http://127.0.0.1:4173`. The published site requires no package installation or build step. Use an HTTP server rather than `file://` for ES modules and image requests.
+Open `http://localhost:4173` (`npm run preview` starts the same server). The preview disables browser caching for HTML, modules, and artwork. Reload after edits; an already open canvas retains its decoded drawing until reloaded. The published site requires no package installation or build step. Use an HTTP server rather than `file://` for ES modules and image requests.
 
 ## Checks
 
@@ -57,6 +57,8 @@ python3 -m venv /tmp/resolve-assets-env
 ```
 
 The stroke generator samples the checked-in `assets/{desktop,mobile}/photo.webp` authoring inputs, writes lossless RGBA ink plates and PNG timing maps, and produces `/tmp/resolve-stages-preview.jpg` for art review. `prepare-assets.py` retains the original source-normalization helpers and ridge geometry used by the stroke generator; it belongs to the first iteration and is not a deployment step. Inspect stroke growth and all checkpoints whenever changing inputs or parameters; the geometry is specific to this landscape.
+
+The generator also records content hashes for every delivered image in the manifest. Runtime image URLs use those revisions; the manifest is fetched without caching. If editing an asset outside the generator, run `python3 scripts/asset_revisions.py` afterward. The static checks reject outdated hashes. Finish asset generation before previewing or deploying a revision.
 
 ## Limits
 

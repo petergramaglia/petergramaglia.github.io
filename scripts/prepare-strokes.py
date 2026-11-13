@@ -9,6 +9,7 @@ coordinates with the approved source. Requires Pillow, NumPy, SciPy.
 from pathlib import Path
 import importlib.util
 import json
+from asset_revisions import update_revisions
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy.ndimage import gaussian_filter, sobel, distance_transform_edt, map_coordinates
@@ -517,6 +518,7 @@ def main():
         manifest[name].pop('controlWidth',None)
         manifest[name].pop('controlHeight',None)
     manifest_path.write_text(json.dumps(manifest,indent=2)+'\n')
+    update_revisions()
     sheet=Image.new('RGB',(3200,850),tuple(PAPER.astype(int)))
     draw=ImageDraw.Draw(sheet)
     for row,images in enumerate(frames):

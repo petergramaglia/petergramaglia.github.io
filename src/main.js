@@ -84,7 +84,7 @@ function resize() {
 async function start() {
   try {
     // About is already usable even if graphics or asset loading fails.
-    const response = await fetch(new URL('../assets/manifest.json', import.meta.url), { signal: AbortSignal.timeout(12_000) });
+    const response = await fetch(new URL('../assets/manifest.json', import.meta.url), { cache: 'no-store', signal: AbortSignal.timeout(12_000) });
     if (!response.ok) throw new Error('Landscape manifest unavailable');
     manifest = await response.json();
     renderer = new LandscapeRenderer(canvas, fail);
