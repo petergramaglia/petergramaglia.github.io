@@ -7,6 +7,12 @@ test('homepage local references exist and identifiers are unique', async () => {
   const html = await readFile(new URL('index.html', root), 'utf8');
   const refs = [...html.matchAll(/(?:src|href|srcset)="([^"#]+)"/g)].map((m) => m[1]).filter((ref) => !/^(https?:|mailto:)/.test(ref));
   for (const ref of refs) await access(new URL(ref, root));
+  for (const name of ['styles/site.css', 'src/main.js']) {
+    const ref = refs.find((ref) => ref.startsWith(`${name}?v=`));
+    assert.ok(ref, `${name} must have a versioned URL`);
+    const bytes = await readFile(new URL(name, root));
+    assert.equal(new URL(ref, root).searchParams.get('v'), createHash('sha256').update(bytes).digest('hex').slice(0, 20), `${name} needs a new revision`);
+  }
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length);
   assert.match(html, /type="range"/);

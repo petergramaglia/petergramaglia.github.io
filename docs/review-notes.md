@@ -128,3 +128,7 @@ Validation: all 10 Node and 20 Chrome browser tests pass. The local preview was 
 Removed the homepage name, leaving About and the bottom slider. Initial HTML, accessible value, CSS indicator, and renderer progress now all start at zero. The About pane uses 16px monospace type at the same weight and size for the name, biography, LinkedIn, and close control. The 44px close target sits 12px from the pane's top and right edges.
 
 Validation: 10 Node and 20 Chrome browser tests pass. Additional desktop and mobile browser inspection verified the initial zero value, absence of a homepage heading, uniform computed font sizes/families, close-control placement, and click-to-close behavior.
+
+## Stylesheet and entry-script freshness
+
+The user confirmed that localhost showed the updated typography while the existing 127.0.0.1 preview did not. Fresh HTTP reads matched the checkout, and browser inspection of actual platform fonts showed Courier at 16px for every About text element. Extended the revision updater to version the CSS and main-script URLs as well as artwork, with static checks to reject stale entry hashes. The module-failure browser route now matches the revisioned URL. All 10 Node and 20 Chrome browser tests pass.

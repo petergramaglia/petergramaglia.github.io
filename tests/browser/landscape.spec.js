@@ -131,7 +131,7 @@ test('WebGL denial and module failure preserve static content', async ({ browser
   await expect(page.locator('#field')).toHaveAttribute('data-renderer', 'fallback');
   await expect(page.locator('#tuner')).toBeHidden();
   await context.close();
-  const other = await browser.newPage(); await other.route('**/src/main.js', (route) => route.abort());
+  const other = await browser.newPage(); await other.route('**/src/main.js?*', (route) => route.abort());
   await other.goto('http://127.0.0.1:4173/');
   await other.getByRole('link', { name: 'About', exact: true }).click();
   await expect(other.locator('#about')).toBeVisible();

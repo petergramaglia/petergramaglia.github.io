@@ -1,4 +1,4 @@
-"""Update content revisions after authoring any landscape assets."""
+"""Update content revisions after editing artwork, CSS, or the entry script."""
 import hashlib
 import json
 import re
@@ -21,6 +21,12 @@ def update_revisions():
         # Keep the no-JS / load-failure image on the same version as the renderer.
         html = re.sub(rf'assets/{variant}/finished\.webp(?:\?v=[a-f0-9]+)?',
                       f'assets/{variant}/finished.webp?v={revisions["finished.webp"]}', html)
+    # Styling and initial state change independently of the artwork. Give
+    # their entry URLs new cache keys too, including caches from old previews.
+    for name in ['styles/site.css', 'src/main.js']:
+        revision = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()[:20]
+        html = re.sub(re.escape(name) + r'(?:\?v=[a-f0-9]+)?',
+                      f'{name}?v={revision}', html)
     path.write_text(json.dumps(manifest, indent=2) + '\n')
     html_path.write_text(html)
 
