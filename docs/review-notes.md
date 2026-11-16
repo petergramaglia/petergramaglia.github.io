@@ -122,3 +122,9 @@ Validation: 10 Node tests and 20 Chrome browser tests pass. A new GPU regression
 Removed the Contact link. About now contains only Peter's name, supplied Anduril/Tufts biography, and existing LinkedIn link. The visible close control is “x”; its accessible Close About label and 44-pixel target remain. The homepage name now inherits the same sans-serif font as About. Removed unused styles for the deleted content.
 
 Validation: all 10 Node and 20 Chrome browser tests pass. The local preview was restored to the repository's no-store server after a plain HTTP server caused the cache-policy check to fail. Existing dialog focus, Escape, no-JavaScript, and responsive checks pass.
+
+## Homepage controls and uniform About typography
+
+Removed the homepage name, leaving About and the bottom slider. Initial HTML, accessible value, CSS indicator, and renderer progress now all start at zero. The About pane uses 16px monospace type at the same weight and size for the name, biography, LinkedIn, and close control. The 44px close target sits 12px from the pane's top and right edges.
+
+Validation: 10 Node and 20 Chrome browser tests pass. Additional desktop and mobile browser inspection verified the initial zero value, absence of a homepage heading, uniform computed font sizes/families, close-control placement, and click-to-close behavior.

@@ -12,7 +12,7 @@ const number = document.querySelector('#resolve-number');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const lifecycle = new AbortController();
 let renderer, input, observer, manifest, requestedVariant;
-let target = .03, current = .03, raf = 0, lastTime = 0, paused = false, failed = false;
+let target = 0, current = 0, raf = 0, lastTime = 0, paused = false, failed = false;
 
 function pause(value) {
   paused = value || document.hidden;
