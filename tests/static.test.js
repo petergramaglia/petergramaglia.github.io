@@ -10,7 +10,6 @@ test('homepage local references exist and identifiers are unique', async () => {
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length);
   assert.match(html, /type="range"/);
-  assert.match(html, /AI-expanded edges/);
 });
 test('all derivative assets and legacy resume remain available', async () => {
   const manifest = JSON.parse(await readFile(new URL('assets/manifest.json', root), 'utf8'));

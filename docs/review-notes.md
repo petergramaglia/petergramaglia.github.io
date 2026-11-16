@@ -116,3 +116,9 @@ Replaced the loosely authored structural guides with individually traced photogr
 Independent Astra high visual review approved both native-photo overlays and the final desktop/portrait browser stages. Independent rendering review approved coordinate scaling, closed silhouettes, shared pencil/color paths, valid timing, and endpoint preservation. Source photographs, colored RGBA plates, and finished paintings are byte-identical to the preceding revision. Only pencil artwork and timing maps changed, with manifest revisions refreshed.
 
 Validation: 10 Node tests and 20 Chrome browser tests pass. A new GPU regression samples independently identified photographic cliff landmarks and locations of the old invented bands. It fails against the preceding assets (no early pigment on the actual cliff crest) and passes with the correction: real edges have early color while misplaced bands remain unpainted. Existing drawing-order, mobile, fallback, orientation, cache, endpoint, and interaction checks pass. Fresh source-aspect captures and the native overlays were inspected together at 40/55/65 percent. One auxiliary capture timed out while resizing alongside other browser work; a focused repeat completed with the mobile renderer ready, and the full responsive tests passed.
+
+## Minimal About copy and matching type
+
+Removed the Contact link. About now contains only Peter's name, supplied Anduril/Tufts biography, and existing LinkedIn link. The visible close control is “x”; its accessible Close About label and 44-pixel target remain. The homepage name now inherits the same sans-serif font as About. Removed unused styles for the deleted content.
+
+Validation: all 10 Node and 20 Chrome browser tests pass. The local preview was restored to the repository's no-store server after a plain HTTP server caused the cache-policy check to fail. Existing dialog focus, Escape, no-JavaScript, and responsive checks pass.
