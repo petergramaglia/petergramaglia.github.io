@@ -7,7 +7,7 @@ test('homepage local references exist and identifiers are unique', async () => {
   const html = await readFile(new URL('index.html', root), 'utf8');
   const refs = [...html.matchAll(/(?:src|href|srcset)="([^"#]+)"/g)].map((m) => m[1]).filter((ref) => !/^(https?:|mailto:)/.test(ref));
   for (const ref of refs) await access(new URL(ref, root));
-  for (const name of ['styles/site.css', 'src/main.js']) {
+  for (const name of ['styles/site.css', 'src/main.js', 'assets/favicon.svg']) {
     const ref = refs.find((ref) => ref.startsWith(`${name}?v=`));
     assert.ok(ref, `${name} must have a versioned URL`);
     const bytes = await readFile(new URL(name, root));

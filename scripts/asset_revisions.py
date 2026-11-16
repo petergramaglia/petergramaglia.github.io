@@ -23,7 +23,7 @@ def update_revisions():
                       f'assets/{variant}/finished.webp?v={revisions["finished.webp"]}', html)
     # Styling and initial state change independently of the artwork. Give
     # their entry URLs new cache keys too, including caches from old previews.
-    for name in ['styles/site.css', 'src/main.js']:
+    for name in ['styles/site.css', 'src/main.js', 'assets/favicon.svg']:
         revision = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()[:20]
         html = re.sub(re.escape(name) + r'(?:\?v=[a-f0-9]+)?',
                       f'{name}?v={revision}', html)
